@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Metaphor Debugger / 比喩生成MOD</title>
   <style>
     :root {
@@ -21,7 +21,10 @@
     }
 
     * { box-sizing: border-box; }
-    html { -webkit-text-size-adjust: 100%; }
+    html {
+      -webkit-text-size-adjust: 100%;
+      touch-action: manipulation;
+    }
 
     body {
       margin: 0;
@@ -379,7 +382,7 @@
       .card { padding: 10px; }
       .card-compact { padding: 12px; }
       label { font-size: 14px; }
-      textarea, select, input { font-size: 14px; }
+      textarea, select, input { font-size: 16px; }
     }
   </style>
 </head>
