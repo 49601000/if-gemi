@@ -269,6 +269,19 @@
         <button id="sampleBtn" class="secondary" type="button">サンプル文を投入</button>
       </div>
 
+      <label for="metaphorMode">使用する比喩</label>
+      <select id="metaphorMode">
+        <option value="比喩案を採用">比喩案を採用</option>
+        <option value="改善案を採用">改善案を採用</option>
+      </select>
+
+      <label for="metaphorOverride">比喩の追加・変更（任意）</label>
+      <textarea id="metaphorOverride" placeholder="例：
+・初期プロフ放置の比喩は使う
+・ただし「全裸待機」は削る
+・改善案の「英字Tシャツ」は採用しない
+・代わりに「ログイン3ヶ月前の死に垢」を強調する"></textarea>
+
       <p class="hint">Scenario Structure: Source/Target/構造/マッピングを明示し論点を保持 / Narrative Punch: 導入・比喩回収・Target回収・パンチラインを強化</p>
     </section>
 
@@ -297,6 +310,8 @@
     const outputEl = document.getElementById("optimizedText");
     const logicOnEl = document.getElementById("logicOn");
     const styleOnEl = document.getElementById("styleOn");
+    const metaphorModeEl = document.getElementById("metaphorMode");
+    const metaphorOverrideEl = document.getElementById("metaphorOverride");
     const runBtn = document.getElementById("runBtn");
     const sampleBtn = document.getElementById("sampleBtn");
     const copyOutputBtn = document.getElementById("copyOutputBtn");
@@ -307,6 +322,27 @@
     const buttonResetTimers = new WeakMap();
 
     const sampleText = "レイドバトルの超レアボス出現部屋を、公式インフルエンサーとその身内がパスワード付きで全ロックして、一般人を弾いている状態";
+
+    function extractSection(text, heading) {
+      const escaped = heading.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const regex = new RegExp(`${escaped}[\s\S]*?(?=(^【[^】]+】)|\s*$)`, "m");
+      const match = text.match(regex);
+      if (!match) return "";
+      return match[0].replace(new RegExp(`^${escaped}`), "").trim();
+    }
+
+    function selectMetaphorBase(inputText, mode) {
+      const primary = mode === "改善案を採用" ? "【改善案】" : "【比喩案】";
+      const fallback = primary === "【改善案】" ? "【比喩案】" : "【改善案】";
+      let content = extractSection(inputText, primary);
+      if (!content) {
+        content = extractSection(inputText, fallback);
+      }
+      if (!content) {
+        return inputText.trim();
+      }
+      return content;
+    }
 
     function buildPrompt(inputText, scenarioEnabled, punchEnabled) {
       const base = `【基本指示】
@@ -326,10 +362,14 @@
 「これは何の比喩か」
 が分かる回収を入れてください。`;
 
+      const metaphorMode = metaphorModeEl.value;
+      const metaphorOverride = metaphorOverrideEl.value.trim();
+      const selectedMetaphor = selectMetaphorBase(inputText, metaphorMode);
+
       const quoteBlock = `【引用対象】
 ${inputText}`;
 
-      const scenarioBlock = `【Scenario Structure Module】
+      const scenarioBlock = `【Scenario Structure Module】`
 - 物語化の前に、次の4項目を必須で確定する
   1. Source Domain（何を比喩として使っているか）
   2. Structural Pattern（抽象構造）
@@ -382,6 +422,19 @@ ${inputText}`;
 ## 【Source / Target 対応表】
 | Source Domain | Target Domain | 機能 |
 | --- | --- | --- |
+
+## 【採用する比喩】
+以下の比喩をベースに、ロジックと会話を構成してください。
+
+- 採用モード：${metaphorMode}
+- ベース比喩：
+${selectedMetaphor}
+
+【比喩の追加・変更】
+${metaphorOverride || 'なし'}
+
+※追加・変更欄がある場合は、そちらを優先する。
+※ただし比喩の構造対応が崩れる変更は避ける。
 
 ## 【シナリオ骨子（Targetアンカー）】
 1. 導入（元事象の違和感）：
@@ -567,6 +620,8 @@ ${inputText}`;
     inputEl.addEventListener("input", syncPromptPreview);
     logicOnEl.addEventListener("change", syncPromptPreview);
     styleOnEl.addEventListener("change", syncPromptPreview);
+    metaphorModeEl.addEventListener("change", syncPromptPreview);
+    metaphorOverrideEl.addEventListener("input", syncPromptPreview);
     copyPromptBtn.addEventListener("click", async () => {
       await runButtonTransition(copyPromptBtn, {
         busyLabel: "コピー中...",

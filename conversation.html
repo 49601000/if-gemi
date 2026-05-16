@@ -230,6 +230,14 @@
           <option>カクヨム本文案</option>
         </select>
 
+        <label>思想・価値観（任意）</label>
+        <textarea id="thoughts" placeholder="例：
+・投資するかしないか自体が価値観
+・みんながやってるから参加する必要はない
+・選択の自覚が大事
+・ノーリスク信仰ではなく harm reduction
+・最適解より退場しない設計"></textarea>
+
         <details open>
           <summary>出力パラメータ</summary>
           <div class="body">
@@ -285,6 +293,7 @@
           <div class="pill"><b>用途</b><span id="purposeState">教材化</span></div>
           <div class="pill"><b>師匠</b><span id="mentorState">穏やかな分析師匠</span></div>
           <div class="pill"><b>弟子</b><span id="studentState">素直な初心者</span></div>
+          <div class="pill"><b>思想</b><span id="thoughtsState">未設定</span></div>
           <div class="pill"><b>コピー状態</b><span id="copyState" class="warnTxt">未コピー</span></div>
         </div>
 
@@ -393,6 +402,15 @@ responsePattern:
 - 「いや気持ちはわかるｗ でもそこ勘違いしやすいんよ」
 - 「お前それ“安全そうに見える”と“安全”をごっちゃにしとるｗ」`;
 
+const conversationConstraints = `【会話生成制約】
+- 1ターンは短く。1発話は1〜3文程度。
+- 長文を連続させず、短い往復を増やす。
+- 師匠は全部を説明しない。ツッコミ、短い例え、誤解修正、一言で刺す。
+- 弟子は素朴にズレる。誤解やツッコミ役として読者の代理になる。
+- 「つまり〜」「要するに〜」「これは〜という構造です」は使わない。
+- 最後は軽いオチや余韻のある雑な終わり方にする。
+- 思想・価値観入力がある場合は、その内容を師匠の価値観として自然に滲ませ、説明文として直接吐かない。`;
+
 const dsl = {
   version: '1.0.0',
   name: 'metaphor_dialogue_prompt_dsl',
@@ -427,10 +445,8 @@ const dsl = {
 const state = {
   defaultPresetKey: 'teaching',
   rangeIds: ['structureDepth','dialogueDrama','studentDelay','teacherDensity','metaphorRetention','punchlineStrength'],
-  watchIds: ['subjectName','mentorPreset','mentorCustom','studentPreset','studentCustom','purpose','source','presetSelect']
+  watchIds: ['subjectName','mentorPreset','mentorCustom','studentPreset','studentCustom','purpose','source','presetSelect','thoughts']
 };
-
-function v(id){ return document.getElementById(id).value; }
 
 function bindRange(id){
   const el = document.getElementById(id);
@@ -488,6 +504,7 @@ function buildPrompt(){
   const mentor = getMentor();
   const student = getStudent();
   const purpose = v('purpose');
+  const thoughts = v('thoughts').trim();
   const structureDepth = Number(v('structureDepth'));
   const dialogueDrama = Number(v('dialogueDrama'));
   const studentDelay = Number(v('studentDelay'));
@@ -500,6 +517,8 @@ function buildPrompt(){
   lines.push(basePrompt);
   lines.push('');
   lines.push(mentorSpeechDsl);
+  lines.push('');
+  lines.push(conversationConstraints);
   lines.push('');
   lines.push('【今回の題材】');
   lines.push(subject);
@@ -520,6 +539,17 @@ function buildPrompt(){
   lines.push(`- 師匠の説明圧：${teacherDensity}/10`);
   lines.push(`- 比喩保持度：${metaphorRetention}/10`);
   lines.push(`- パンチライン強度：${punchlineStrength}/10`);
+  if(thoughts){
+    lines.push('');
+    lines.push('【思想・価値観（任意）】');
+    lines.push(thoughts);
+    lines.push('');
+    lines.push('【思想注入ルール】');
+    lines.push('- この内容は師匠の価値観や会話の着地点として自然に反映する。');
+    lines.push('- 露骨な説明文として吐かない。');
+    lines.push('- 会話の中で滲ませて、最後に直接言い切らない。');
+    lines.push('- 弟子の誤解や気づきを使って出す。');
+  }
   lines.push('');
   lines.push('【比喩の扱い（最重要）】');
   lines.push('入力に含まれる比喩は、会話劇の舞台設定に変換しないでください。');
@@ -616,6 +646,7 @@ function updateState(){
   document.getElementById('purposeState').textContent = v('purpose');
   document.getElementById('mentorState').textContent = getMentor();
   document.getElementById('studentState').textContent = getStudent();
+  document.getElementById('thoughtsState').textContent = v('thoughts').trim() ? 'あり' : '未設定';
 }
 
 function isMobileView(){

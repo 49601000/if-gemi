@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Metaphor Debugger / 比喩生成MOD</title>
   <style>
     :root {
@@ -20,13 +20,15 @@
       --radius:18px;
     }
 
-    * { box-sizing: border-box; }
+    *, *::before, *::after { box-sizing: border-box; }
     html {
       width: 100%;
       max-width: 100%;
+      margin: 0;
       -webkit-text-size-adjust: 100%;
-      touch-action: manipulation;
+      touch-action: pan-x pan-y;
       overflow-x: hidden;
+      overflow-x: clip;
     }
 
     body {
@@ -34,6 +36,7 @@
       padding: 0;
       width: 100%;
       max-width: 100%;
+      min-width: 0;
       min-height: 100vh;
       color: var(--ink);
       font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
@@ -42,6 +45,7 @@
         radial-gradient(120% 130% at 100% 0%, rgba(14,165,233,.08) 0%, rgba(14,165,233,0) 52%),
         linear-gradient(135deg, #1a103d 0%, #0f172a 45%, #031a2e 100%);
       overflow-x: hidden;
+      overflow-x: clip;
     }
 
     header{
@@ -61,6 +65,7 @@
       align-items:center;
       justify-content:space-between;
       gap:16px;
+      min-width:0;
     }
     .topbarLeft{display:flex; align-items:center; min-width:0; gap:14px; flex:1;}
     .brandMark{
@@ -77,14 +82,14 @@
 
     main{padding:18px 22px 34px;}
 
-    main, .wrap, .card, .card-compact, .grid, .tab-panel {
+    main, section, .wrap, .card, .card-compact, .grid, .tab-panel {
       width: 100%;
       max-width: 100%;
       min-width: 0;
     }
 
     .wrap {
-      max-width: 1100px;
+      width: min(100%, 1100px);
       margin: 0 auto;
       display: grid;
       gap: 16px;
@@ -275,6 +280,8 @@
     select,
     input {
       width: 100%;
+      max-width: 100%;
+      min-width: 0;
       border: 1px solid rgba(148,163,184,.2);
       border-radius: 12px;
       padding: 11px 12px;
@@ -386,18 +393,23 @@
     .builder-status.error { color: var(--err); }
     .builder-status.busy { color: var(--accent-dark); }
 
-    @media (max-width: 680px) {
+    @media (max-width: 640px) {
       .topbar{min-height:56px; padding:6px 12px; gap:10px;}
       .topbarLeft{gap:8px;}
       .brandMark{width:32px; height:32px; border-radius:9px; font-size:14px;}
-      .brandText{font-size:14px;}
-      .topbarTitle{font-size:12px;}
+      .brandText{font-size:14px; white-space:normal; overflow-wrap:anywhere;}
+      .topbarTitle{font-size:12px; white-space:normal; overflow-wrap:anywhere;}
       .topbarVersion{font-size:9px;}
-      main{padding:10px 14px 18px;}
+      main{padding:10px 16px 18px;}
       .card { padding: 12px; }
+      h1 { font-size: clamp(1.5rem, 8vw, 2rem); line-height: 1.2; }
+      h2, h3, p { max-width: 100%; overflow-wrap: anywhere; }
       .tabs {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
         flex-wrap: wrap;
-        overflow-x: visible;
+        overflow-x: auto;
         justify-content: flex-start;
         padding-bottom: 4px;
       }
@@ -406,6 +418,7 @@
       .builder-controls { grid-template-columns: 1fr; }
       .action-row { display: grid; grid-template-columns: 1fr; }
       .action-row button { width: 100%; }
+      .primary-button, .secondary-button { width: 100%; max-width: 100%; min-width: 0; }
       #mapping .card-compact { overflow-x: auto; }
       #mapping table { min-width: 0; table-layout: fixed; }
       #mapping th, #mapping td { padding: 10px 8px; font-size: 0.86rem; }
@@ -569,48 +582,6 @@
   </main>
 
   <script>
-    (function normalizeInitialScaleOnOpen() {
-      const viewport = document.querySelector('meta[name="viewport"]');
-      if (!viewport) return;
-
-      const baseViewport = "width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no";
-
-      function resetViewportScale() {
-        viewport.setAttribute("content", baseViewport);
-        const vv = window.visualViewport;
-        if (vv && Math.abs(vv.scale - 1) > 0.01) {
-          viewport.setAttribute("content", "width=device-width, initial-scale=1.0");
-          window.setTimeout(() => {
-            viewport.setAttribute("content", baseViewport);
-            window.scrollTo(0, 0);
-          }, 40);
-        }
-      }
-
-      resetViewportScale();
-      window.addEventListener("pageshow", resetViewportScale);
-    })();
-
-    (function preventIosZoomGestures() {
-      const isIOS = /iP(ad|hone|od)/.test(navigator.userAgent);
-      if (!isIOS) return;
-
-      let lastTouchEnd = 0;
-      document.addEventListener("touchend", (event) => {
-        const now = Date.now();
-        if (now - lastTouchEnd <= 320) {
-          event.preventDefault();
-        }
-        lastTouchEnd = now;
-      }, { passive: false });
-
-      ["gesturestart", "gesturechange", "gestureend"].forEach((type) => {
-        document.addEventListener(type, (event) => {
-          event.preventDefault();
-        }, { passive: false });
-      });
-    })();
-
     const theories = [
       {
         name: "構造対応理論",
