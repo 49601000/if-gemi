@@ -23,6 +23,7 @@
     * { box-sizing: border-box; }
     html {
       -webkit-text-size-adjust: 100%;
+      text-size-adjust: 100%;
       touch-action: manipulation;
     }
 
@@ -111,6 +112,7 @@
       margin: 0;
       color: var(--sub);
       line-height: 1.7;
+      overflow-wrap: anywhere;
     }
 
     .tabs {
@@ -156,7 +158,7 @@
     .card-grid {
       display: grid;
       gap: 14px;
-      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
     }
 
     .badge {
@@ -189,6 +191,11 @@
       background: #0f172a;
       color: var(--ink);
       font-weight: 700;
+    }
+
+    th, td {
+      overflow-wrap: anywhere;
+      word-break: break-word;
     }
 
     .flow {
@@ -277,7 +284,7 @@
     .builder-controls {
       display: grid;
       gap: 12px;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
     }
 
     .action-row {
@@ -323,6 +330,18 @@
 
     .secondary-button:hover {
       filter: brightness(1.08);
+    }
+
+    img,
+    video,
+    canvas,
+    svg,
+    table,
+    textarea,
+    input,
+    select,
+    button {
+      max-width: 100%;
     }
 
     .primary-button.is-busy,
@@ -374,7 +393,8 @@
       .action-row { display: grid; grid-template-columns: 1fr; }
       .action-row button { width: 100%; }
       #mapping .card-compact { overflow-x: auto; }
-      #mapping table { min-width: 620px; }
+      #mapping table { min-width: 0; table-layout: fixed; }
+      #mapping th, #mapping td { padding: 10px 8px; font-size: 0.86rem; }
     }
 
     @media (max-width: 420px) {
@@ -534,29 +554,6 @@
   </main>
 
   <script>
-    (function normalizeViewportScale() {
-      const viewportMeta = document.querySelector('meta[name="viewport"]');
-      if (!viewportMeta) return;
-
-      const viewportContent = "width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, shrink-to-fit=no";
-
-      function applyViewport() {
-        viewportMeta.setAttribute("content", viewportContent);
-      }
-
-      function correctScaleIfNeeded() {
-        if (!window.visualViewport) return;
-        if (Math.abs(window.visualViewport.scale - 1) > 0.01) {
-          applyViewport();
-          window.scrollTo(0, 0);
-        }
-      }
-
-      applyViewport();
-      window.addEventListener("pageshow", correctScaleIfNeeded);
-      window.addEventListener("orientationchange", correctScaleIfNeeded);
-    })();
-
     const theories = [
       {
         name: "構造対応理論",
