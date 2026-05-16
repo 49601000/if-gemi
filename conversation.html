@@ -454,6 +454,11 @@ const state = {
   watchIds: ['subjectName','mentorPreset','mentorCustom','studentPreset','studentCustom','purpose','source','presetSelect','thoughts']
 };
 
+function v(id){
+  const el = document.getElementById(id);
+  return el ? el.value : '';
+}
+
 function loadStoredParams(){
   const raw = localStorage.getItem(storageKey);
   if(!raw) return;
