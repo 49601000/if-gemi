@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, shrink-to-fit=no" />
   <title>Metaphor Debugger / 比喩生成MOD</title>
   <style>
     :root {
@@ -261,6 +261,7 @@
       background: #0b1220;
       color: var(--ink);
       font: inherit;
+      font-size: 16px;
       line-height: 1.65;
     }
 
@@ -382,7 +383,6 @@
       .card { padding: 10px; }
       .card-compact { padding: 12px; }
       label { font-size: 14px; }
-      textarea, select, input { font-size: 16px; }
     }
   </style>
 </head>
@@ -534,6 +534,29 @@
   </main>
 
   <script>
+    (function normalizeViewportScale() {
+      const viewportMeta = document.querySelector('meta[name="viewport"]');
+      if (!viewportMeta) return;
+
+      const viewportContent = "width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, shrink-to-fit=no";
+
+      function applyViewport() {
+        viewportMeta.setAttribute("content", viewportContent);
+      }
+
+      function correctScaleIfNeeded() {
+        if (!window.visualViewport) return;
+        if (Math.abs(window.visualViewport.scale - 1) > 0.01) {
+          applyViewport();
+          window.scrollTo(0, 0);
+        }
+      }
+
+      applyViewport();
+      window.addEventListener("pageshow", correctScaleIfNeeded);
+      window.addEventListener("orientationchange", correctScaleIfNeeded);
+    })();
+
     const theories = [
       {
         name: "構造対応理論",
