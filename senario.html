@@ -1,0 +1,604 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Metaphor → Scenario Structure Builder</title>
+  <style>
+    :root {
+      --bg:#0f172a;
+      --panel:rgba(15,23,42,.82);
+      --ink:#e8ecf8;
+      --sub:#94a3b8;
+      --line:rgba(139,92,246,.2);
+      --accent:#8b5cf6;
+      --accent-dark:#7c3aed;
+      --ok:#67e3ad;
+      --err:#ff7aa8;
+      --shadow:0 20px 50px rgba(0,0,0,.25);
+      --radius:18px;
+    }
+
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+
+    body {
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
+      background:
+        radial-gradient(100% 120% at 0% 0%, rgba(124,58,237,.26) 0%, rgba(124,58,237,0) 46%),
+        radial-gradient(120% 130% at 100% 0%, rgba(14,165,233,.08) 0%, rgba(14,165,233,0) 52%),
+        linear-gradient(135deg, #1a103d 0%, #0f172a 45%, #031a2e 100%);
+      overflow-x: hidden;
+    }
+
+    header{
+      position:sticky;
+      top:0;
+      z-index:40;
+      border-bottom:1px solid rgba(139,92,246,.22);
+      background:linear-gradient(90deg, #5B21B6 0%, #4C1D95 35%, #1E1B4B 70%, #0F172A 100%);
+      box-shadow:0 12px 32px rgba(0,0,0,.28);
+      backdrop-filter:blur(8px);
+    }
+
+    .topbar{
+      min-height:66px;
+      padding:8px 20px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:16px;
+    }
+
+    .topbarLeft{display:flex; align-items:center; min-width:0; gap:14px;}
+    .brandMark{
+      width:40px; height:40px; border-radius:12px; display:grid; place-items:center;
+      background:linear-gradient(160deg, #552fb0, #3b277f);
+      border:1px solid rgba(173,148,255,.35);
+      box-shadow:0 8px 20px rgba(20,14,50,.45);
+      color:#f3edff; font-size:17px; line-height:1;
+    }
+    .brandText{font-size:18px; font-weight:800; letter-spacing:.01em; color:#f8fafc; white-space:nowrap;}
+    .topbarDivider{width:1px; height:28px; background:rgba(154,164,202,.4); flex:none;}
+    .topbarTitle{font-size:17px; font-weight:800; color:#f8fafc; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+    .topbarVersion{font-size:12px; font-weight:800; color:#c4b5fd; letter-spacing:.04em; opacity:.9; white-space:nowrap;}
+
+    main{padding:18px 22px 34px;}
+
+    .wrap {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: grid;
+      gap: 16px;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 16px;
+      box-shadow: var(--shadow);
+    }
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: clamp(1.35rem, 2.5vw, 1.95rem);
+      letter-spacing: 0.02em;
+    }
+
+    p {
+      margin: 0;
+      color: var(--sub);
+      line-height: 1.65;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 700;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 180px;
+      border: 1px solid rgba(148,163,184,.2);
+      border-radius: 12px;
+      background: #0b1220;
+      color: var(--ink);
+      font: inherit;
+      line-height: 1.7;
+      padding: 12px;
+      resize: vertical;
+    }
+
+    .toolbar {
+      margin-top: 12px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid rgba(148,163,184,.2);
+      border-radius: 12px;
+      padding: 8px 10px;
+      background: #0f172a;
+      color: var(--ink);
+      font-size: 0.95rem;
+    }
+
+    button {
+      border: none;
+      border-radius: 12px;
+      padding: 10px 14px;
+      color: #fff;
+      background: linear-gradient(135deg,#7c3aed,#8b5cf6);
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 140ms ease, filter 140ms ease;
+    }
+
+    button:hover:not(:disabled) {
+      filter: brightness(1.08);
+      transform: translateY(-1px);
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    button.secondary {
+      background: rgba(15,23,42,.75);
+      border: 1px solid rgba(148,163,184,.2);
+      color: #e2e8f0;
+    }
+
+    button.is-busy {
+      opacity: 0.86;
+      cursor: wait;
+      transform: none;
+    }
+
+    button.is-done {
+      background: var(--ok);
+    }
+
+    button.is-error {
+      background: var(--err);
+    }
+
+    .hint {
+      margin-top: 6px;
+      font-size: 0.92rem;
+      color: var(--sub);
+    }
+
+    .status {
+      font-weight: 700;
+    }
+
+    .status.ok { color: var(--ok); }
+    .status.error { color: var(--err); }
+    .status.busy { color: var(--accent-dark); }
+
+    .meta {
+      margin-top: 8px;
+      font-size: 0.9rem;
+      color: var(--sub);
+      white-space: pre-wrap;
+    }
+
+    .subtools {
+      margin-top: 10px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    @media (max-width: 680px) {
+      .topbar{min-height:56px; padding:6px 12px; gap:10px;}
+      .topbarLeft{gap:8px;}
+      .brandMark{width:32px; height:32px; border-radius:9px; font-size:14px;}
+      .brandText{font-size:14px;}
+      .topbarTitle{font-size:12px;}
+      .topbarVersion{font-size:9px;}
+      main{padding:10px 14px 18px;}
+      .card { padding: 12px; }
+      textarea { min-height: 160px; }
+      .toolbar { display: grid; grid-template-columns: 1fr; align-items: stretch; }
+      .toolbar button { width: 100%; }
+      .toggle { width: 100%; justify-content: space-between; }
+      .subtools { display: grid; grid-template-columns: 1fr; }
+      .subtools button { width: 100%; }
+    }
+
+    @media (max-width: 420px) {
+      .topbarTitle { display: none; }
+      .topbarDivider { display: none; }
+      .card { padding: 10px; }
+      label { font-size: 14px; }
+      textarea { min-height: 140px; font-size: 14px; }
+      button { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="topbar">
+      <div class="topbarLeft">
+        <div class="brandMark" aria-hidden="true">⬢</div>
+        <div class="brandText">PromptBuilder</div>
+        <div class="topbarDivider" aria-hidden="true"></div>
+        <div class="topbarTitle">Metaphor → Scenario Structure Builder</div>
+      </div>
+      <div class="topbarVersion">v1.0</div>
+    </div>
+  </header>
+
+  <main>
+  <div class="wrap">
+    <section class="card">
+      <h1>Metaphor → Scenario Structure Builder</h1>
+      <p>生成済みの比喩を、Target Domain（本来の論点）を保持したまま、シナリオ骨子へ構造翻訳するためのAI用プロンプトを生成します。</p>
+    </section>
+
+    <section class="card">
+      <label for="inputText">生成済みの比喩</label>
+      <textarea id="inputText" placeholder="ここに比喩をコピペする"></textarea>
+
+      <div class="toolbar">
+        <label class="toggle" for="logicOn">
+          <input id="logicOn" type="checkbox" checked />
+          Scenario Structure
+        </label>
+        <label class="toggle" for="styleOn">
+          <input id="styleOn" type="checkbox" checked />
+          Narrative Punch
+        </label>
+        <button id="runBtn" type="button">シナリオ構造プロンプトを生成</button>
+        <button id="sampleBtn" class="secondary" type="button">サンプル文を投入</button>
+      </div>
+
+      <p class="hint">Scenario Structure: Source/Target/構造/マッピングを明示し論点を保持 / Narrative Punch: 導入・比喩回収・Target回収・パンチラインを強化</p>
+    </section>
+
+    <section class="card">
+      <label for="promptPreview">Prompt Preview（AIへ送る実文）</label>
+      <textarea id="promptPreview" readonly></textarea>
+      <div class="subtools">
+        <button id="copyPromptBtn" class="secondary" type="button">プロンプトをコピー</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <label for="optimizedText">AI生成結果</label>
+      <textarea id="optimizedText" placeholder="AIの返答をここへ貼り付けてください（手動）"></textarea>
+      <div class="subtools">
+        <button id="copyOutputBtn" class="secondary" type="button">出力をコピー</button>
+      </div>
+      <p id="status" class="hint status"></p>
+      <p id="meta" class="meta"></p>
+    </section>
+  </div>
+  </main>
+
+  <script>
+    const inputEl = document.getElementById("inputText");
+    const outputEl = document.getElementById("optimizedText");
+    const logicOnEl = document.getElementById("logicOn");
+    const styleOnEl = document.getElementById("styleOn");
+    const runBtn = document.getElementById("runBtn");
+    const sampleBtn = document.getElementById("sampleBtn");
+    const copyOutputBtn = document.getElementById("copyOutputBtn");
+    const copyPromptBtn = document.getElementById("copyPromptBtn");
+    const promptEl = document.getElementById("promptPreview");
+    const statusEl = document.getElementById("status");
+    const metaEl = document.getElementById("meta");
+    const buttonResetTimers = new WeakMap();
+
+    const sampleText = "レイドバトルの超レアボス出現部屋を、公式インフルエンサーとその身内がパスワード付きで全ロックして、一般人を弾いている状態";
+
+    function buildPrompt(inputText, scenarioEnabled, punchEnabled) {
+      const base = `【基本指示】
+あなたは、比喩や元事象を「構造翻訳」する編集AIです。
+あなたの目的は、似た話を作ることではありません。
+「何の話か（Target Domain）」を保持したまま、読者が構造を理解できる物語骨組みを作ることです。
+元の比喩の意味・立場関係・感情の方向性は維持してください。
+捏造は禁止。元比喩から読み取れる範囲で構造化してください。
+
+比喩や元事象を構造分解する際、
+必ず「Target Domain（本来説明したい論点）」を明示してください。
+
+物語本文だけが独立してしまい、
+元論点が消えることは禁止です。
+
+最後に必ず
+「これは何の比喩か」
+が分かる回収を入れてください。`;
+
+      const quoteBlock = `【引用対象】
+${inputText}`;
+
+      const scenarioBlock = `【Scenario Structure Module】
+- 物語化の前に、次の4項目を必須で確定する
+  1. Source Domain（何を比喩として使っているか）
+  2. Structural Pattern（抽象構造）
+  3. Target Domain（何を説明したいか）※必須
+  4. Narrative Mapping（Source と Target の対応づけ）
+- 主導者、協力者、利益、被害者、排除構造を明示する
+- 「何がズルいのか」「なぜ一般側が怒るのか」を抽出する
+- 構造を転写するのであって、単なる着せ替えにしない
+
+【物語生成ルール】
+- Rule 1: 物語だけで完結させない（読者が「これは何の話か」を分かる構造にする）
+- Rule 2: Target Domain を最後に回収する（末尾か構造メモで明示）
+- Rule 3: Source の再表現だけにしない（抽象構造を使って翻訳する）
+- Rule 4: 物語が脱線したら Target に戻す（Target をアンカーにする）`;
+
+      const punchBlock = `【Narrative Punch Module】
+- 冒頭で状況が一発でわかる導入を作る
+- 中盤で比喩を「説明装置」として短く使う
+- 終盤で「最初から勝負になっていない」感を出す
+- 最後は短いパンチラインで終える
+- パンチライン後に元論点（Target）へ明示的に戻す
+- 説明しすぎず、読者に接続させる余白を残す`;
+
+      const modeRules = [];
+      if (scenarioEnabled && punchEnabled) {
+        modeRules.push("【モード制約】Scenario Structure + Narrative Punch を同時適用し、構造分解と読後インパクトを両立する。");
+      } else if (scenarioEnabled) {
+        modeRules.push("【モード制約】Scenario Structure のみ適用し、構造分解を最優先する。");
+      } else if (punchEnabled) {
+        modeRules.push("【モード制約】Narrative Punch のみ適用し、元比喩の構造を維持したまま導入とパンチラインを強化する。");
+      }
+
+      const outputFormat = `【出力形式】
+## 【元比喩】
+入力比喩を引用
+
+## 【必須4項目】
+- Source Domain：
+- Structural Pattern：
+- Target Domain（必須）：
+- Narrative Mapping：
+
+## 【構造分解】
+- 主導者：
+- 協力者：
+- 独占される利益：
+- 排除される一般参加者：
+- 不条理の核：
+
+## 【Source / Target 対応表】
+| Source Domain | Target Domain | 機能 |
+| --- | --- | --- |
+
+## 【シナリオ骨子（Targetアンカー）】
+1. 導入（元事象の違和感）：
+2. 問いの提示（何がおかしいか）：
+3. 構造の可視化（独占・排除・利益配分）：
+4. 比喩による説明補助（中盤で短く）：
+5. Targetへの回収（つまり何の話か）：
+6. パンチライン：
+
+## 【本文化サンプル】
+短めのシナリオ本文を生成する。
+ただし本文だけが独立しないよう、最後に Target Domain を明示回収する。
+
+## 【回収メモ】
+- これは何の比喩か：
+- Targetをどこで回収したか：
+- 比喩をどこで説明装置として使ったか：`;
+
+      const blocks = [base, quoteBlock];
+      if (scenarioEnabled) blocks.push(scenarioBlock);
+      if (punchEnabled) blocks.push(punchBlock);
+      if (modeRules.length) blocks.push(modeRules.join("\n"));
+      blocks.push(outputFormat);
+
+      return blocks.join("\n\n");
+    }
+
+    function setIdleStatus(text) {
+      statusEl.textContent = text;
+      statusEl.className = "hint status";
+    }
+
+    function setStatus(message, tone) {
+      statusEl.textContent = message;
+      statusEl.className = "hint status";
+      if (tone) {
+        statusEl.classList.add(tone);
+      }
+    }
+
+    async function copyToClipboard(text) {
+      await navigator.clipboard.writeText(text);
+    }
+
+    function clearButtonResetTimer(button) {
+      const timer = buttonResetTimers.get(button);
+      if (timer) {
+        window.clearTimeout(timer);
+        buttonResetTimers.delete(button);
+      }
+    }
+
+    function queueButtonReset(button, delayMs = 1200) {
+      clearButtonResetTimer(button);
+      const timer = window.setTimeout(() => {
+        button.textContent = button.dataset.idleLabel || button.textContent;
+        button.disabled = false;
+        button.classList.remove("is-busy", "is-done", "is-error");
+        buttonResetTimers.delete(button);
+      }, delayMs);
+      buttonResetTimers.set(button, timer);
+    }
+
+    async function runButtonTransition(button, config) {
+      clearButtonResetTimer(button);
+      if (!button.dataset.idleLabel) {
+        button.dataset.idleLabel = button.textContent;
+      }
+
+      button.disabled = true;
+      button.classList.remove("is-done", "is-error");
+      button.classList.add("is-busy");
+      button.textContent = config.busyLabel;
+      setStatus(config.busyStatus, "busy");
+
+      try {
+        await config.action();
+        button.classList.remove("is-busy");
+        button.classList.add("is-done");
+        button.textContent = config.doneLabel;
+        setStatus(config.doneStatus, "ok");
+      } catch (error) {
+        button.classList.remove("is-busy");
+        button.classList.add("is-error");
+        button.textContent = config.errorLabel;
+        setStatus(error?.message || config.errorStatus, "error");
+      } finally {
+        queueButtonReset(button);
+      }
+    }
+
+    async function sleep(ms) {
+      return new Promise(resolve => window.setTimeout(resolve, ms));
+    }
+
+    async function copyText(text) {
+      if (!text) {
+        metaEl.textContent = "";
+        throw new Error("コピー対象が空です。");
+      }
+
+      try {
+        await copyToClipboard(text);
+        metaEl.textContent = "";
+      } catch (error) {
+        throw new Error(`コピーに失敗しました。ブラウザ権限を確認してください。 ${String(error)}`);
+      }
+    }
+
+    function syncPromptPreview() {
+      const input = inputEl.value.trim();
+      const scenarioEnabled = logicOnEl.checked;
+      const punchEnabled = styleOnEl.checked;
+
+      if (!input) {
+        promptEl.value = "入力待ちです。";
+        return;
+      }
+
+      if (!scenarioEnabled && !punchEnabled) {
+        promptEl.value = "Scenario Structure / Narrative Punch ともにOFFです。どちらかをONにしてください。";
+        return;
+      }
+
+      promptEl.value = buildPrompt(input, scenarioEnabled, punchEnabled);
+    }
+
+    async function runGeneration() {
+      const inputText = inputEl.value.trim();
+      const scenarioEnabled = logicOnEl.checked;
+      const punchEnabled = styleOnEl.checked;
+
+      if (!inputText) {
+        outputEl.value = "";
+        metaEl.textContent = "";
+        throw new Error("入力待ちです。");
+      }
+
+      if (!scenarioEnabled && !punchEnabled) {
+        outputEl.value = "";
+        metaEl.textContent = "";
+        throw new Error("Scenario Structure / Narrative Punch ともにOFFです。");
+      }
+
+      const prompt = buildPrompt(inputText, scenarioEnabled, punchEnabled);
+      promptEl.value = prompt;
+      await copyToClipboard(prompt);
+      metaEl.textContent = "AIの返答は「AI生成結果」欄へ手動で貼り付けてください。";
+    }
+
+    runBtn.addEventListener("click", async () => {
+      await runButtonTransition(runBtn, {
+        busyLabel: "生成中...",
+        doneLabel: "生成完了",
+        errorLabel: "生成失敗",
+        busyStatus: "シナリオ構造プロンプトを生成しています...",
+        doneStatus: "プロンプトを生成してコピーしました。AIへ貼り付けてください。",
+        errorStatus: "プロンプト生成に失敗しました。",
+        action: async () => {
+          await runGeneration();
+          await sleep(200);
+        }
+      });
+    });
+
+    sampleBtn.addEventListener("click", async () => {
+      await runButtonTransition(sampleBtn, {
+        busyLabel: "投入中...",
+        doneLabel: "投入完了",
+        errorLabel: "投入失敗",
+        busyStatus: "サンプル文を投入しています...",
+        doneStatus: "サンプル文を投入しました。",
+        errorStatus: "サンプル文の投入に失敗しました。",
+        action: async () => {
+          inputEl.value = sampleText;
+          syncPromptPreview();
+          metaEl.textContent = "";
+          await sleep(200);
+        }
+      });
+    });
+
+    inputEl.addEventListener("input", syncPromptPreview);
+    logicOnEl.addEventListener("change", syncPromptPreview);
+    styleOnEl.addEventListener("change", syncPromptPreview);
+    copyPromptBtn.addEventListener("click", async () => {
+      await runButtonTransition(copyPromptBtn, {
+        busyLabel: "コピー中...",
+        doneLabel: "コピー完了",
+        errorLabel: "コピー失敗",
+        busyStatus: "プロンプトをコピーしています...",
+        doneStatus: "プロンプトをコピーしました。",
+        errorStatus: "プロンプトのコピーに失敗しました。",
+        action: async () => {
+          await copyText(promptEl.value.trim());
+          await sleep(120);
+        }
+      });
+    });
+
+    copyOutputBtn.addEventListener("click", async () => {
+      await runButtonTransition(copyOutputBtn, {
+        busyLabel: "コピー中...",
+        doneLabel: "コピー完了",
+        errorLabel: "コピー失敗",
+        busyStatus: "出力をコピーしています...",
+        doneStatus: "出力をコピーしました。",
+        errorStatus: "出力のコピーに失敗しました。",
+        action: async () => {
+          await copyText(outputEl.value.trim());
+          await sleep(120);
+        }
+      });
+    });
+
+    syncPromptPreview();
+    setIdleStatus("入力待ちです。");
+  </script>
+</body>
+</html>

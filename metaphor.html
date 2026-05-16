@@ -1,0 +1,1013 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Metaphor Debugger / 比喩生成MOD</title>
+  <style>
+    :root {
+      --bg:#0f172a;
+      --panel:rgba(15,23,42,.82);
+      --ink:#e8ecf8;
+      --sub:#94a3b8;
+      --line:rgba(139,92,246,.2);
+      --accent:#8b5cf6;
+      --accent-dark:#7c3aed;
+      --ok:#67e3ad;
+      --err:#ff7aa8;
+      --surface:#0b1220;
+      --shadow:0 20px 50px rgba(0,0,0,.25);
+      --radius:18px;
+    }
+
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+
+    body {
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
+      background:
+        radial-gradient(100% 120% at 0% 0%, rgba(124,58,237,.26) 0%, rgba(124,58,237,0) 46%),
+        radial-gradient(120% 130% at 100% 0%, rgba(14,165,233,.08) 0%, rgba(14,165,233,0) 52%),
+        linear-gradient(135deg, #1a103d 0%, #0f172a 45%, #031a2e 100%);
+      overflow-x: hidden;
+    }
+
+    header{
+      position:sticky;
+      top:0;
+      z-index:40;
+      border-bottom:1px solid rgba(139,92,246,.22);
+      background:linear-gradient(90deg, #5B21B6 0%, #4C1D95 35%, #1E1B4B 70%, #0F172A 100%);
+      box-shadow:0 12px 32px rgba(0,0,0,.28);
+      backdrop-filter:blur(8px);
+    }
+
+    .topbar{
+      min-height:66px;
+      padding:8px 20px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:16px;
+    }
+    .topbarLeft{display:flex; align-items:center; min-width:0; gap:14px;}
+    .brandMark{
+      width:40px; height:40px; border-radius:12px; display:grid; place-items:center;
+      background:linear-gradient(160deg, #552fb0, #3b277f);
+      border:1px solid rgba(173,148,255,.35);
+      box-shadow:0 8px 20px rgba(20,14,50,.45);
+      color:#f3edff; font-size:17px; line-height:1;
+    }
+    .brandText{font-size:18px; font-weight:800; letter-spacing:.01em; color:#f8fafc; white-space:nowrap;}
+    .topbarDivider{width:1px; height:28px; background:rgba(154,164,202,.4); flex:none;}
+    .topbarTitle{font-size:17px; font-weight:800; color:#f8fafc; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+    .topbarVersion{font-size:12px; font-weight:800; color:#c4b5fd; letter-spacing:.04em; opacity:.9; white-space:nowrap;}
+
+    main{padding:18px 22px 34px;}
+
+    .wrap {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: grid;
+      gap: 16px;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 18px;
+      box-shadow: var(--shadow);
+    }
+
+    .grid {
+      display: grid;
+      gap: 14px;
+    }
+
+    .two-col {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: clamp(1.45rem, 2.5vw, 2.2rem);
+      letter-spacing: 0.02em;
+    }
+
+    h2 {
+      margin: 0 0 12px;
+      font-size: clamp(1.1rem, 2vw, 1.4rem);
+    }
+
+    p, li {
+      margin: 0;
+      color: var(--sub);
+      line-height: 1.7;
+    }
+
+    .tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .tab-button {
+      border: 1px solid rgba(148,163,184,.2);
+      background: #0f172a;
+      color: var(--ink);
+      border-radius: 999px;
+      padding: 10px 16px;
+      cursor: pointer;
+      font-weight: 700;
+      transition: background 180ms ease, transform 180ms ease;
+    }
+
+    .tab-button.active,
+    .tab-button:hover {
+      background: var(--accent);
+      color: white;
+      transform: translateY(-1px);
+    }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    .card-compact {
+      border-radius: 12px;
+      border: 1px solid rgba(148,163,184,.2);
+      background: #0b1220;
+      padding: 16px;
+    }
+
+    .card-stack {
+      display: grid;
+      gap: 14px;
+    }
+
+    .card-grid {
+      display: grid;
+      gap: 14px;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.85rem;
+      background: rgba(139,92,246,.16);
+      color: #ddd6fe;
+      margin-top: 10px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #0b1220;
+    }
+
+    th, td {
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+      font-size: 0.96rem;
+    }
+
+    th {
+      background: #0f172a;
+      color: var(--ink);
+      font-weight: 700;
+    }
+
+    .flow {
+      display: grid;
+      gap: 16px;
+    }
+
+    .flow-step {
+      display: grid;
+      gap: 10px;
+      padding: 16px;
+      border-radius: 14px;
+      border: 1px solid rgba(148,163,184,.2);
+      background: #0b1220;
+    }
+
+    .step-title {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      font-weight: 700;
+    }
+
+    .flow-line {
+      width: 2px;
+      height: 20px;
+      background: var(--line);
+      margin: 0 auto;
+    }
+
+    ul { padding-left: 18px; }
+
+    .prompt-part {
+      background: var(--surface);
+      border: 1px dashed rgba(148,163,184,.3);
+      border-radius: 12px;
+      padding: 14px;
+      white-space: pre-wrap;
+      font-size: 0.95rem;
+      color: var(--ink);
+    }
+
+    .info {
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: rgba(139,92,246,.14);
+      color: #ddd6fe;
+      border: 1px solid rgba(139,92,246,.25);
+      margin-bottom: 10px;
+    }
+
+    .field {
+      display: grid;
+      gap: 8px;
+    }
+
+    .field label {
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    textarea,
+    select,
+    input {
+      width: 100%;
+      border: 1px solid rgba(148,163,184,.2);
+      border-radius: 12px;
+      padding: 11px 12px;
+      background: #0b1220;
+      color: var(--ink);
+      font: inherit;
+      line-height: 1.65;
+    }
+
+    textarea {
+      min-height: 140px;
+      resize: vertical;
+    }
+
+    textarea[readonly] {
+      background: #0f172a;
+    }
+
+    .builder-controls {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    }
+
+    .action-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .primary-button,
+    .secondary-button {
+      border: none;
+      border-radius: 10px;
+      padding: 10px 14px;
+      color: #fff;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 150ms ease, background 150ms ease;
+    }
+
+    .primary-button {
+      background: linear-gradient(135deg,#7c3aed,#8b5cf6);
+    }
+
+    .secondary-button {
+      background: rgba(15,23,42,.75);
+      border: 1px solid rgba(148,163,184,.2);
+      color: #e2e8f0;
+    }
+
+    .primary-button:hover,
+    .secondary-button:hover {
+      transform: translateY(-1px);
+    }
+
+    .primary-button:hover {
+      filter: brightness(1.08);
+    }
+
+    .secondary-button:hover {
+      filter: brightness(1.08);
+    }
+
+    .primary-button.is-busy,
+    .secondary-button.is-busy {
+      opacity: 0.86;
+      cursor: wait;
+      transform: none;
+    }
+
+    .primary-button.is-done,
+    .secondary-button.is-done {
+      background: var(--ok);
+    }
+
+    .primary-button.is-error,
+    .secondary-button.is-error {
+      background: var(--err);
+    }
+
+    .builder-status {
+      min-height: 1.35em;
+      margin: 0;
+      font-size: 0.94rem;
+      font-weight: 700;
+    }
+
+    .builder-status.ok { color: var(--ok); }
+    .builder-status.error { color: var(--err); }
+    .builder-status.busy { color: var(--accent-dark); }
+
+    @media (max-width: 760px) {
+      .topbar{min-height:56px; padding:6px 12px; gap:10px;}
+      .topbarLeft{gap:8px;}
+      .brandMark{width:32px; height:32px; border-radius:9px; font-size:14px;}
+      .brandText{font-size:14px;}
+      .topbarTitle{font-size:12px;}
+      .topbarVersion{font-size:9px;}
+      main{padding:10px 14px 18px;}
+      .tabs {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        justify-content: flex-start;
+        padding-bottom: 4px;
+        -webkit-overflow-scrolling: touch;
+      }
+      .tab-button { flex: 0 0 auto; white-space: nowrap; }
+      .two-col { grid-template-columns: 1fr; }
+      .builder-controls { grid-template-columns: 1fr; }
+      .action-row { display: grid; grid-template-columns: 1fr; }
+      .action-row button { width: 100%; }
+      #mapping .card-compact { overflow-x: auto; }
+      #mapping table { min-width: 620px; }
+    }
+
+    @media (max-width: 420px) {
+      .topbarTitle { display: none; }
+      .topbarDivider { display: none; }
+      .card { padding: 10px; }
+      .card-compact { padding: 12px; }
+      label { font-size: 14px; }
+      textarea, select, input { font-size: 14px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="topbar">
+      <div class="topbarLeft">
+        <div class="brandMark" aria-hidden="true">⬢</div>
+        <div class="brandText">PromptBuilder</div>
+        <div class="topbarDivider" aria-hidden="true"></div>
+        <div class="topbarTitle">Metaphor Debugger / 比喩生成MOD</div>
+      </div>
+      <div class="topbarVersion">v1.0</div>
+    </div>
+  </header>
+
+  <main>
+  <div class="wrap">
+    <section class="card">
+      <h1>Metaphor Debugger / 比喩生成MOD</h1>
+      <p>比喩生成を「理論辞書 → 対応表 → 応用例 → 評価基準 → 失敗診断 → 生成フロー」として扱うUIです。既存デザインを崩さず、LLMプロンプト部品として再利用しやすい構造を目指しました。</p>
+      <div class="info">タブを切り替えて、比喩の理論・対応・応用・評価・失敗・生成フローを順番に確認できます。</div>
+    </section>
+
+    <section class="card">
+      <h2>比喩プロンプトビルダー</h2>
+      <p>元ネタ本文・比喩の目的・source domain を選ぶと、Gateチェック入りの実用プロンプトを生成します。</p>
+      <div class="grid">
+        <div class="field">
+          <label for="builderInputText">元ネタ本文</label>
+          <textarea id="builderInputText" placeholder="ここに元ネタ本文を貼り付けてください"></textarea>
+        </div>
+        <div class="builder-controls">
+          <div class="field">
+            <label for="metaphorGoal">比喩の目的</label>
+            <select id="metaphorGoal">
+              <option value="説明したい">説明したい</option>
+              <option value="笑わせたい">笑わせたい</option>
+              <option value="刺したい">刺したい</option>
+              <option value="圧縮したい">圧縮したい</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="sourceDomain">優先する source domain</label>
+            <select id="sourceDomain">
+              <option value="__custom__">カスタム入力</option>
+              <option value="戦争">戦争</option>
+              <option value="建物">建物</option>
+              <option value="火">火</option>
+              <option value="資源">資源</option>
+              <option value="道のり">道のり</option>
+              <option value="ガチャ">ガチャ</option>
+              <option value="おでん">おでん</option>
+              <option value="野球">野球</option>
+            </select>
+          </div>
+          <div class="field hidden" id="customSourceDomainField">
+            <label for="customSourceDomain">カスタム source domain</label>
+            <input id="customSourceDomain" type="text" placeholder="例: スタンプラリー / 図鑑埋め / バーゲンセール" />
+          </div>
+        </div>
+        <div class="action-row">
+          <button class="primary-button" id="buildPromptBtn" type="button">プロンプト生成</button>
+          <button class="secondary-button" id="sampleBuilderBtn" type="button">サンプル構文投入</button>
+          <button class="secondary-button" id="copyBuilderPromptBtn" type="button">生成プロンプトをコピー</button>
+        </div>
+        <p class="builder-status" id="builderActionStatus" aria-live="polite"></p>
+        <div class="field">
+          <label for="builderPromptOutput">AIへ投げるプロンプト</label>
+          <textarea id="builderPromptOutput" readonly placeholder="生成ボタンを押すとここにプロンプトが表示されます"></textarea>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="tabs" role="tablist">
+        <button class="tab-button active" data-tab="theory" type="button">1. 理論タブ</button>
+        <button class="tab-button" data-tab="mapping" type="button">2. 対応表</button>
+        <button class="tab-button" data-tab="applications" type="button">3. 応用</button>
+        <button class="tab-button" data-tab="evaluation" type="button">4. 評価</button>
+        <button class="tab-button" data-tab="failures" type="button">5. 失敗</button>
+        <button class="tab-button" data-tab="flow" type="button">6. 生成フロー</button>
+      </div>
+
+      <div class="tab-panel active" id="theory">
+        <h2>比喩理論辞書</h2>
+        <p>理論名・提唱者・核心概念・具体例をカードで表示し、比喩の土台理解を支援します。</p>
+        <div class="card-grid" id="theoryCards"></div>
+      </div>
+
+      <div class="tab-panel" id="mapping">
+        <h2>source / target 対応表</h2>
+        <p>比喩生成の内部ロジックとして使える、source domain と target domain の関係を整理します。</p>
+        <div class="card-compact">
+          <table>
+            <thead>
+              <tr>
+                <th>source domain</th>
+                <th>target domain</th>
+                <th>種類</th>
+                <th>メモ</th>
+              </tr>
+            </thead>
+            <tbody id="mappingTable"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="applications">
+        <h2>日常表現への応用</h2>
+        <p>抽象理論を生きたパターン集に変換し、LLMが参照しやすい形で提示します。</p>
+        <div class="card-grid" id="applicationCards"></div>
+      </div>
+
+      <div class="tab-panel" id="evaluation">
+        <h2>上手い比喩の定義</h2>
+        <p>4理論を評価基準に変換し、良い比喩の条件を構造化します。</p>
+        <div class="grid two-col">
+          <div class="card-compact" id="evaluationCards"></div>
+          <div class="card-compact">
+            <h3>実装者向けメモ</h3>
+            <ul>
+              <li>構造対応: source / target の役割が揃っているか。</li>
+              <li>イメージ力: sensory bundle が豊かか。</li>
+              <li>バグ検査: 対応に矛盾がないか。</li>
+              <li>伝わる力: 読者の文化共有を確認する。</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="failures">
+        <h2>失敗パターン診断</h2>
+        <p>F-1〜F-5の失敗類型を定義し、どこで比喩が壊れるかを診断できるようにします。</p>
+        <div class="card-grid" id="failureCards"></div>
+      </div>
+
+      <div class="tab-panel" id="flow">
+        <h2>比喩生成フロー</h2>
+        <p>生成フローをチェックゲートとともに可視化し、評価・修正の順序を明示します。</p>
+        <div class="flow" id="flowSteps"></div>
+        <div class="card-compact">
+          <h3>Gate チェック項目</h3>
+          <div id="promptParts"></div>
+        </div>
+      </div>
+    </section>
+  </div>
+  </main>
+
+  <script>
+    const theories = [
+      {
+        name: "構造対応理論",
+        author: "Lakoff & Johnson",
+        concept: "比喩は source と target の構造的対応をもとに成り立つ。",
+        example: "議論＝戦争 / 組織＝建物",
+        note: "比喩の基礎はパート・関係・役割の一致。"
+      },
+      {
+        name: "相互作用理論",
+        author: "Kenneth Burke",
+        concept: "比喩は source と target の相互作用を生成する。",
+        example: "感情＝火 ↔ 情熱＝炎",
+        note: "単なる置換ではなく、両側の響き合いを確認する。"
+      },
+      {
+        name: "イメージ束理論",
+        author: "George Lakoff",
+        concept: "比喩は複数のイメージをまとめて意味を圧縮する。",
+        example: "時間＝お金 / アイデア＝種",
+        note: "豊かなイメージ束があれば読者の想像を広げる。"
+      },
+      {
+        name: "写像検査理論",
+        author: "James Geary",
+        concept: "比喩は対応関係のバグを持たないことが重要。",
+        example: "人生＝旅路",
+        note: "要素のズレがないか、余分なレイヤーが入っていないかを診断する。"
+      }
+    ];
+
+    const mappings = [
+      { source: "議論", target: "戦争", type: "一方向", note: "構造対応と競争関係の共鳴" },
+      { source: "組織", target: "建物", type: "一方向", note: "役割と階層を空間的に表現" },
+      { source: "感情", target: "火", type: "双方向 ↔", note: "エネルギーと広がりを共有" },
+      { source: "時間", target: "資源", type: "一方向", note: "有限性と管理感を対応" },
+      { source: "学習", target: "道のり", type: "一方向", note: "段階と目標の構造を対応" }
+    ];
+
+    const applications = [
+      {
+        pattern: "議論は戦争だ",
+        meaning: "立場の対立と消耗を伝える",
+        type: "対立構造"
+      },
+      {
+        pattern: "組織は建物だ",
+        meaning: "階層・基盤・弱点を可視化する",
+        type: "構造比喩"
+      },
+      {
+        pattern: "時間は資源だ",
+        meaning: "浪費や投資を直感化する",
+        type: "抽象圧縮"
+      },
+      {
+        pattern: "アイデアは種だ",
+        meaning: "育成・発芽・広がりのプロセスを表現する",
+        type: "成長メタファー"
+      }
+    ];
+
+    const evaluationCriteria = [
+      {
+        title: "構造が対応している",
+        description: "source と target の役割・要素・関係性が揃っている。"
+      },
+      {
+        title: "イメージ束が豊かである",
+        description: "単一イメージではなく、複数の結びつきが連想を拡張する。"
+      },
+      {
+        title: "写像にバグがない",
+        description: "対応すべきでない要素が混ざらず、誤解を誘わない。"
+      },
+      {
+        title: "読者に伝わる",
+        description: "比喩元が読者に共有されていて、直感的に理解できる。"
+      }
+    ];
+
+    const failures = [
+      {
+        id: "F-1",
+        title: "構造不一致",
+        symptom: "source と target の役割が噛み合わない。",
+        diagnose: "重要な対応関係が抜けている、または余分な要素が混ざっている。"
+      },
+      {
+        id: "F-2",
+        title: "感情は強いが論理が弱い",
+        symptom: "イメージはあるが、対応構造が曖昧。",
+        diagnose: "読み手は感じるが、何を比較しているか理解できない。"
+      },
+      {
+        id: "F-3",
+        title: "写像のズレ",
+        symptom: "対応関係に矛盾や穴がある。",
+        diagnose: "同じ比喩内でルールが変わってしまう。"
+      },
+      {
+        id: "F-4",
+        title: "元ネタ依存が強すぎる",
+        symptom: "読者が比喩元を知らないと意味が通じない。",
+        diagnose: "文化共有チェックに違反している。内輪ネタになっている。"
+      },
+      {
+        id: "F-5",
+        title: "説明過多で比喩になっていない",
+        symptom: "比喩を出してからその意味を全部説明してしまう。",
+        diagnose: "メタファーの圧縮力が失われ、平板な説明になっている。"
+      }
+    ];
+
+    const flowSteps = [
+      { step: "比喩生成", detail: "アイデアの種を置き、source / target を決める。" },
+      { step: "構造チェック", detail: "source と target の役割・関係性を揃える。" },
+      { step: "相互作用チェック", detail: "イメージ束と連想の広がりを確認する。" },
+      { step: "写像チェック", detail: "バグ・ズレ・誤解の余地を潰す。" },
+      { step: "文化共有チェック", detail: "読者が比喩元を知り、直感できるか検証する。" },
+      { step: "出力", detail: "必要最小限と余白を残して比喩を完成させる。" }
+    ];
+
+    const gates = [
+      {
+        title: "Gate 1: 構造チェック",
+        prompts: [
+          "source domain と target domain の構造は一致しているか？",
+          "対応関係を言語化して説明できるか？",
+          "どの要素が対応しているのか明示できるか？"
+        ]
+      },
+      {
+        title: "Gate 2: 相互作用チェック",
+        prompts: [
+          "イメージ束は十分に広がっているか？",
+          "読者の中で連想が広がるか？",
+          "ただの置換で終わっていないか？"
+        ]
+      },
+      {
+        title: "Gate 3: 写像チェック",
+        prompts: [
+          "source から target への対応にバグはないか？",
+          "対応させるべきでない要素が混ざっていないか？",
+          "誤解を生む対応になっていないか？"
+        ]
+      },
+      {
+        title: "Gate 4: 文化共有チェック",
+        prompts: [
+          "読者はその比喩元を知っているか？",
+          "知らなくても直感できるか？",
+          "知識前提が重すぎないか？",
+          "内輪ネタになっていないか？"
+        ]
+      }
+    ];
+
+    const theoryContainer = document.getElementById("theoryCards");
+    const mappingContainer = document.getElementById("mappingTable");
+    const applicationContainer = document.getElementById("applicationCards");
+    const evaluationContainer = document.getElementById("evaluationCards");
+    const failureContainer = document.getElementById("failureCards");
+    const flowContainer = document.getElementById("flowSteps");
+    const promptPartsContainer = document.getElementById("promptParts");
+    const builderInputText = document.getElementById("builderInputText");
+    const metaphorGoalSelect = document.getElementById("metaphorGoal");
+    const sourceDomainSelect = document.getElementById("sourceDomain");
+    const buildPromptBtn = document.getElementById("buildPromptBtn");
+    const sampleBuilderBtn = document.getElementById("sampleBuilderBtn");
+    const copyBuilderPromptBtn = document.getElementById("copyBuilderPromptBtn");
+    const builderPromptOutput = document.getElementById("builderPromptOutput");
+    const customSourceDomainField = document.getElementById("customSourceDomainField");
+    const customSourceDomainInput = document.getElementById("customSourceDomain");
+    const builderActionStatus = document.getElementById("builderActionStatus");
+    const buttonResetTimers = new WeakMap();
+
+    const sampleBuilderText = "・・・が・・・で、・・・・してしまう";
+
+    function buildMetaphorPrompt(inputText, metaphorGoal, sourceDomain) {
+      const normalizedText = inputText.trim() || "（入力なし）";
+      const gateChecklist = gates.map((gate, index) => {
+        const prompts = gate.prompts.map(prompt => `  - ${prompt}`).join("\n");
+        return `${index + 1}. ${gate.title}\n${prompts}`;
+      }).join("\n\n");
+
+      return `あなたは比喩生成MODです。
+
+目的：
+入力文の核心を、読者に直感的に伝わる比喩へ変換してください。
+
+入力文：
+${normalizedText}
+
+比喩の目的：
+${metaphorGoal}
+
+優先する source domain：
+${sourceDomain}
+
+生成条件：
+- source domain と target domain の構造対応を明示する
+- 読者が直感できる比喩にする
+- 説明しすぎず、短く圧縮する
+- 比喩のあとに短い診断をつける
+- 内輪ネタになりすぎないようにする
+
+Gateチェック（必ず反映）：
+${gateChecklist}
+
+出力形式：
+
+【比喩案】
+本文
+
+【対応表】
+source:
+target:
+対応関係:
+
+【診断】
+構造対応:
+イメージ力:
+写像バグ:
+文化共有:
+説明過多:
+
+【改善案】
+より強くするなら：`;
+    }
+
+    async function copyToClipboard(text) {
+      if (!text.trim()) return false;
+      try {
+        await navigator.clipboard.writeText(text);
+        return true;
+      } catch (error) {
+        try {
+          const helper = document.createElement("textarea");
+          helper.value = text;
+          document.body.appendChild(helper);
+          helper.select();
+          document.execCommand("copy");
+          document.body.removeChild(helper);
+          return true;
+        } catch (fallbackError) {
+          return false;
+        }
+      }
+    }
+
+    function initBuilder() {
+      function sleep(ms) {
+        return new Promise(resolve => window.setTimeout(resolve, ms));
+      }
+
+      function setBuilderStatus(message, tone) {
+        builderActionStatus.textContent = message || "";
+        builderActionStatus.classList.remove("ok", "error", "busy");
+        if (message && tone) {
+          builderActionStatus.classList.add(tone);
+        }
+      }
+
+      function clearButtonResetTimer(button) {
+        const timer = buttonResetTimers.get(button);
+        if (timer) {
+          window.clearTimeout(timer);
+          buttonResetTimers.delete(button);
+        }
+      }
+
+      function queueButtonReset(button, delayMs = 1200) {
+        clearButtonResetTimer(button);
+        const timer = window.setTimeout(() => {
+          button.textContent = button.dataset.idleLabel || button.textContent;
+          button.disabled = false;
+          button.classList.remove("is-busy", "is-done", "is-error");
+          buttonResetTimers.delete(button);
+        }, delayMs);
+        buttonResetTimers.set(button, timer);
+      }
+
+      async function runButtonTransition(button, config) {
+        clearButtonResetTimer(button);
+        if (!button.dataset.idleLabel) {
+          button.dataset.idleLabel = button.textContent;
+        }
+
+        button.disabled = true;
+        button.classList.remove("is-done", "is-error");
+        button.classList.add("is-busy");
+        button.textContent = config.busyLabel;
+        setBuilderStatus(config.busyStatus, "busy");
+
+        try {
+          await config.action();
+          button.classList.remove("is-busy");
+          button.classList.add("is-done");
+          button.textContent = config.doneLabel;
+          setBuilderStatus(config.doneStatus, "ok");
+        } catch (error) {
+          button.classList.remove("is-busy");
+          button.classList.add("is-error");
+          button.textContent = config.errorLabel;
+          setBuilderStatus(config.errorStatus, "error");
+        } finally {
+          queueButtonReset(button);
+        }
+      }
+
+      function resolveSourceDomain() {
+        if (sourceDomainSelect.value !== "__custom__") {
+          return sourceDomainSelect.value;
+        }
+        const customValue = customSourceDomainInput.value.trim();
+        return customValue || "（カスタム未入力）";
+      }
+
+      function syncCustomSourceDomainField() {
+        const isCustom = sourceDomainSelect.value === "__custom__";
+        customSourceDomainField.classList.toggle("hidden", !isCustom);
+        customSourceDomainInput.disabled = !isCustom;
+      }
+
+      buildPromptBtn.addEventListener("click", async () => {
+        await runButtonTransition(buildPromptBtn, {
+          busyLabel: "生成中...",
+          doneLabel: "生成完了",
+          errorLabel: "生成失敗",
+          busyStatus: "プロンプトを組み立てています...",
+          doneStatus: "プロンプト生成が完了しました。",
+          errorStatus: "プロンプト生成に失敗しました。",
+          action: async () => {
+            builderPromptOutput.value = buildMetaphorPrompt(
+              builderInputText.value,
+              metaphorGoalSelect.value,
+              resolveSourceDomain()
+            );
+            await sleep(250);
+          }
+        });
+      });
+
+      sampleBuilderBtn.addEventListener("click", async () => {
+        await runButtonTransition(sampleBuilderBtn, {
+          busyLabel: "投入中...",
+          doneLabel: "投入完了",
+          errorLabel: "投入失敗",
+          busyStatus: "サンプル構文を投入しています...",
+          doneStatus: "サンプル構文の投入が完了しました。",
+          errorStatus: "サンプル構文の投入に失敗しました。",
+          action: async () => {
+            builderInputText.value = sampleBuilderText;
+            metaphorGoalSelect.value = "刺したい";
+            sourceDomainSelect.value = "ガチャ";
+            customSourceDomainInput.value = "";
+            syncCustomSourceDomainField();
+            await sleep(250);
+          }
+        });
+      });
+
+      copyBuilderPromptBtn.addEventListener("click", async () => {
+        await runButtonTransition(copyBuilderPromptBtn, {
+          busyLabel: "コピー中...",
+          doneLabel: "コピー完了",
+          errorLabel: "コピー失敗",
+          busyStatus: "生成プロンプトをコピーしています...",
+          doneStatus: "コピー完了: 生成プロンプトをクリップボードに保存しました。",
+          errorStatus: "コピーに失敗しました。プロンプト生成後に再試行してください。",
+          action: async () => {
+            const ok = await copyToClipboard(builderPromptOutput.value);
+            if (!ok) {
+              throw new Error("copy-failed");
+            }
+          }
+        });
+      });
+
+      sourceDomainSelect.addEventListener("change", syncCustomSourceDomainField);
+      syncCustomSourceDomainField();
+    }
+
+    function renderTheoryCards() {
+      theoryContainer.innerHTML = theories.map(item => `
+        <article class="card-compact">
+          <h3>${item.name}</h3>
+          <p><strong>提唱者：</strong>${item.author}</p>
+          <p><strong>核心概念：</strong>${item.concept}</p>
+          <p><strong>具体例：</strong>${item.example}</p>
+          <p>${item.note}</p>
+        </article>
+      `).join("");
+    }
+
+    function renderMappingTable() {
+      mappingContainer.innerHTML = mappings.map(item => `
+        <tr>
+          <td>${item.source}</td>
+          <td>${item.target}</td>
+          <td>${item.type}</td>
+          <td>${item.note}</td>
+        </tr>
+      `).join("");
+    }
+
+    function renderApplications() {
+      applicationContainer.innerHTML = applications.map(item => `
+        <article class="card-compact">
+          <h3>${item.pattern}</h3>
+          <p><strong>意味：</strong>${item.meaning}</p>
+          <p><strong>タイプ：</strong>${item.type}</p>
+        </article>
+      `).join("");
+    }
+
+    function renderEvaluation() {
+      evaluationContainer.innerHTML = `
+        <h3>評価基準</h3>
+        <ul>
+          ${evaluationCriteria.map(item => `
+            <li><strong>${item.title}</strong><br>${item.description}</li>
+          `).join("")}
+        </ul>
+      `;
+    }
+
+    function renderFailures() {
+      failureContainer.innerHTML = failures.map(item => `
+        <article class="card-compact">
+          <h3>${item.id} ${item.title}</h3>
+          <p><strong>症状：</strong>${item.symptom}</p>
+          <p><strong>診断：</strong>${item.diagnose}</p>
+        </article>
+      `).join("");
+    }
+
+    function renderFlow() {
+      flowContainer.innerHTML = flowSteps.map((item, index) => `
+        <div class="flow-step">
+          <div class="step-title">
+            <span>${index + 1}. ${item.step}</span>
+          </div>
+          <p>${item.detail}</p>
+        </div>
+      `).join("<div class=\"flow-line\"></div>");
+
+      promptPartsContainer.innerHTML = gates.map(gate => `
+        <div class="card-compact">
+          <h4>${gate.title}</h4>
+          <div class="prompt-part">${gate.prompts.map(prompt => `• ${prompt}`).join("\n")}</div>
+        </div>
+      `).join("");
+    }
+
+    function initTabs() {
+      const buttons = document.querySelectorAll(".tab-button");
+      buttons.forEach(button => {
+        button.addEventListener("click", () => {
+          buttons.forEach(btn => btn.classList.remove("active"));
+          button.classList.add("active");
+          document.querySelectorAll(".tab-panel").forEach(panel => panel.classList.remove("active"));
+          document.getElementById(button.dataset.tab).classList.add("active");
+        });
+      });
+    }
+
+    renderTheoryCards();
+    renderMappingTable();
+    renderApplications();
+    renderEvaluation();
+    renderFailures();
+    renderFlow();
+    initTabs();
+    initBuilder();
+  </script>
+</body>
+</html>

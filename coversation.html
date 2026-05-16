@@ -1,0 +1,737 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Metaphor Dialogue Prompt Builder</title>
+  <style>
+    :root{
+      --bg:#0f172a; --panel:#0f172a; --panel2:#0b1220; --line:rgba(139,92,246,.18);
+      --txt:#e8ecf8; --muted:#94a3b8; --accent:#8b5cf6;
+      --warn:#ffb15a; --good:#67e3ad;
+      --shadow: 0 20px 50px rgba(0,0,0,.25);
+      --radius:18px;
+      --tap:44px;
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
+    }
+    *{box-sizing:border-box}
+    html, body{touch-action:manipulation;}
+    html{-webkit-text-size-adjust:100%;}
+    body{margin:0; background:
+      radial-gradient(100% 120% at 0% 0%, rgba(124,58,237,.26) 0%, rgba(124,58,237,0) 46%),
+      radial-gradient(120% 130% at 100% 0%, rgba(14,165,233,.08) 0%, rgba(14,165,233,0) 52%),
+      linear-gradient(135deg, #1a103d 0%, #0f172a 45%, #031a2e 100%);
+      color:var(--txt); padding-bottom: env(safe-area-inset-bottom); overflow-x:hidden;}
+    header{
+      position:sticky;
+      top:0;
+      z-index:40;
+      border-bottom:1px solid rgba(139,92,246,.22);
+      background:linear-gradient(90deg, #5B21B6 0%, #4C1D95 35%, #1E1B4B 70%, #0F172A 100%);
+      box-shadow:0 12px 32px rgba(0,0,0,.28);
+      backdrop-filter:blur(8px);
+    }
+    .topbar{
+      min-height:66px;
+      padding:8px 20px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:16px;
+    }
+    .topbarLeft{display:flex; align-items:center; min-width:0; gap:14px;}
+    .brandMark{
+      width:40px; height:40px; border-radius:12px; display:grid; place-items:center;
+      background:linear-gradient(160deg, #552fb0, #3b277f);
+      border:1px solid rgba(173,148,255,.35);
+      box-shadow:0 8px 20px rgba(20,14,50,.45);
+      color:#f3edff; font-size:17px; line-height:1;
+    }
+    .brandText{font-size:18px; font-weight:800; letter-spacing:.01em; color:#f8fafc; white-space:nowrap;}
+    .topbarDivider{width:1px; height:28px; background:rgba(154,164,202,.4); flex:none;}
+    .topbarTitle{font-size:17px; font-weight:800; color:#f8fafc; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+    .topbarVersion{font-size:12px; font-weight:800; color:#c4b5fd; letter-spacing:.04em; opacity:.9; white-space:nowrap;}
+    main{max-width:1280px; margin:0 auto; padding:18px 22px 34px; display:grid; grid-template-columns: 430px 1fr; gap:18px;}
+    @media(max-width:980px){main{grid-template-columns:1fr}.sticky{position:static!important}}
+    .card{background:rgba(15,23,42,.82); border:1px solid rgba(139,92,246,.18); border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden;}
+    .card h2{font-size:16px; margin:0; padding:16px 18px; border-bottom:1px solid rgba(139,92,246,.16); background:rgba(255,255,255,.02);}
+    .body{padding:16px 18px;}
+    label{display:block; font-size:13px; color:#cbd5e1; margin:14px 0 7px; font-weight:700;}
+    input[type="text"], textarea, select{width:100%; border:1px solid rgba(148,163,184,.18); border-radius:12px; background:#0b1220; color:var(--txt); padding:11px 12px; outline:none; font-size:15px;}
+    input[type="text"]:focus, textarea:focus, select:focus{border-color:#8b5cf6; box-shadow:0 0 0 3px rgba(139,92,246,.18);}
+    input[type="text"]::placeholder, textarea::placeholder{color:rgba(148,163,184,.65);}
+    textarea{min-height:170px; resize:vertical; line-height:1.55; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;}
+    .sourceText{min-height:260px;}
+    .outText{min-height:560px;}
+    input[type="range"]{width:100%; -webkit-appearance:none; appearance:none; height:6px; border-radius:999px; background:rgba(255,255,255,.18); accent-color:var(--accent);}
+    input[type="range"]::-webkit-slider-runnable-track{height:6px; border-radius:999px; background:rgba(255,255,255,.18);}
+    input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none; width:18px; height:18px; margin-top:-6px; border-radius:50%; border:1px solid rgba(139,92,246,.6); background:#8b5cf6; box-shadow:0 0 0 4px rgba(139,92,246,.18);}
+    input[type="range"]::-moz-range-track{height:6px; border-radius:999px; background:rgba(255,255,255,.18);}
+    input[type="range"]::-moz-range-thumb{width:18px; height:18px; border-radius:50%; border:1px solid rgba(139,92,246,.6); background:#8b5cf6; box-shadow:0 0 0 4px rgba(139,92,246,.18);}
+    .row{display:grid; grid-template-columns:1fr 74px; gap:12px; align-items:center;}
+    .val{font-variant-numeric:tabular-nums; text-align:center; border:1px solid rgba(139,92,246,.28); border-radius:10px; padding:7px 8px; color:#ddd6fe; background:rgba(139,92,246,.12);}
+    .grid2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+    .btns{display:flex; flex-wrap:wrap; gap:10px; margin-top:14px;}
+    button{border:none; border-radius:12px; padding:10px 13px; color:#f8fafc; background:linear-gradient(135deg,#7c3aed,#8b5cf6); cursor:pointer; font-weight:800; letter-spacing:.02em; min-height:var(--tap); min-width:112px; transition: transform .15s ease, filter .15s ease, box-shadow .15s ease, opacity .15s ease;}
+    button:hover{filter:brightness(1.08);}
+    button.clicked { transform: translateY(1px) scale(0.98); opacity: .9; filter: brightness(0.88); }
+    button.clicked, button.good.clicked, button.secondary.clicked, button.warn.clicked { box-shadow: inset 0 0 0 2px rgba(255,255,255,.22); }
+    button.clicked { box-shadow: inset 0 0 0 2px rgba(255,255,255,.22), 0 0 0 6px rgba(139,92,246,.22); }
+    button.good.clicked { box-shadow: inset 0 0 0 2px rgba(255,255,255,.22), 0 0 0 6px rgba(47,191,145,.24); }
+    button.secondary.clicked { box-shadow: inset 0 0 0 2px rgba(255,255,255,.22), 0 0 0 6px rgba(143,160,208,.24); }
+    button.warn.clicked { box-shadow: inset 0 0 0 2px rgba(255,255,255,.22), 0 0 0 6px rgba(204,61,120,.24); }
+    button.secondary{background:rgba(15,23,42,.75); border:1px solid rgba(148,163,184,.2); color:#e2e8f0;}
+    button.good{background:linear-gradient(135deg,#7c3aed,#8b5cf6)}
+    button.warn{background:linear-gradient(135deg,#7c3aed,#8b5cf6)}
+    button:disabled{opacity:.46; cursor:not-allowed; pointer-events:none; filter:saturate(.65); box-shadow:none;}
+    .mini{font-size:12px; color:#94a3b8; line-height:1.55; margin-top:8px;}
+    .scaleHint{font-size:12px; color:#94a3b8; margin-top:6px;}
+    details{border-top:1px solid var(--line);}
+    summary{cursor:pointer; padding:14px 18px; color:#ded3ff; font-weight:800; user-select:none;}
+    details .body{padding-top:0}
+    .sticky{position:sticky; top:14px; align-self:start;}
+    .preview{display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:12px;}
+    @media(max-width:700px){.preview{grid-template-columns:1fr 1fr}}
+    .pill{border:1px solid rgba(148,163,184,.18); background:#0f172a; border-radius:14px; padding:10px;}
+    .pill b{display:block; font-size:11px; color:#94a3b8; margin-bottom:4px;}
+    .pill span{font-size:16px; color:#f1f5f9;}
+    .ok{color:var(--good)} .warnTxt{color:var(--warn)}
+    .toast{position:fixed; right:18px; bottom:18px; background:#063327; border:1px solid rgba(103,227,173,.55); color:#cffde6; padding:12px 14px; border-radius:12px; display:none; box-shadow:var(--shadow);}
+    .templateBox{font-size:12px; color:#cbd5e1; white-space:pre-wrap; max-height:220px; overflow:auto; background:#0b1220; border:1px solid rgba(148,163,184,.18); border-radius:12px; padding:12px;}
+    .outputHeader{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:14px;}
+    .outputHeader label{margin:0; flex:1;}
+    .miniBtn{min-height:38px; padding:8px 10px; font-size:12px; border-radius:10px; letter-spacing:0;}
+    .mobileActions{display:none;}
+    .customHidden{display:none;}
+    @media(max-width:980px){
+      body{padding-bottom:92px;}
+      .topbar{min-height:56px; padding:6px 12px; gap:10px;}
+      .topbarLeft{gap:8px;}
+      .brandMark{width:32px; height:32px; border-radius:9px; font-size:14px;}
+      .brandText{font-size:14px;}
+      .topbarTitle{font-size:12px;}
+      .topbarVersion{font-size:9px;}
+      main{padding:10px 14px 18px; gap:12px;}
+      .card h2{padding:14px;}
+      .body{padding:14px;}
+      .sticky{position:static!important}
+      #buildBtn, #copyBtn{display:none;}
+      .mobileActions{
+        display:grid;
+        grid-template-columns:1fr 1fr 1fr;
+        gap:10px;
+        position:fixed;
+        left:12px;
+        right:12px;
+        bottom:calc(10px + env(safe-area-inset-bottom));
+        z-index:20;
+        padding:10px;
+        border:1px solid var(--line);
+        border-radius:14px;
+        background:rgba(10,18,37,.96);
+        box-shadow:var(--shadow);
+        backdrop-filter:blur(8px);
+      }
+      .mobileActions button{width:100%;}
+      body.outputFullscreen{padding-bottom:0; overflow:hidden;}
+      body.outputFullscreen header,
+      body.outputFullscreen #controlPanel,
+      body.outputFullscreen .mobileActions,
+      body.outputFullscreen #sourceGroup,
+      body.outputFullscreen .preview{display:none;}
+      body.outputFullscreen main{display:block; max-width:none; margin:0; padding:0;}
+      body.outputFullscreen #outputPanel{min-height:100dvh; border-radius:0; border-left:none; border-right:none; border-top:none;}
+      body.outputFullscreen #outputPanel .body{padding:12px;}
+      body.outputFullscreen #output{height:calc(100dvh - 116px); min-height:calc(100dvh - 116px);}
+      .toast{right:12px; left:12px; bottom:calc(84px + env(safe-area-inset-bottom)); text-align:center;}
+    }
+    @media(max-width:700px){
+      .preview{grid-template-columns:1fr 1fr}
+      .grid2{grid-template-columns:1fr;}
+      .btns{display:grid; grid-template-columns:1fr 1fr;}
+      .mobileActions{grid-template-columns:1fr 1fr;}
+      .mobileActions .wideOnNarrow{grid-column:1/-1;}
+      .sourceText{min-height:220px;}
+      .outText{min-height:420px;}
+    }
+    @media(max-width:520px){
+      .topbar{min-height:52px; padding:6px 10px; gap:8px;}
+      .topbarLeft{gap:6px;}
+      .topbarDivider{height:18px;}
+      .brandMark{width:28px; height:28px; border-radius:8px; font-size:12px;}
+      .brandText{font-size:12px;}
+      .topbarTitle{font-size:10px;}
+      .topbarVersion{font-size:8px;}
+      label{font-size:14px;}
+      .pill span{font-size:15px;}
+      .btns{grid-template-columns:1fr;}
+      .row{grid-template-columns:1fr 68px; gap:8px;}
+    }
+    @media(max-width:420px){
+      .topbarTitle{display:none;}
+      .topbarDivider{display:none;}
+      .card h2{font-size:15px;}
+      input[type="text"], textarea, select{font-size:14px;}
+      .mobileActions{left:8px; right:8px; padding:8px; gap:8px;}
+      .outputHeader{flex-wrap:wrap;}
+      .outputHeader .miniBtn{width:100%;}
+      .sourceText{min-height:180px;}
+      .outText{min-height:360px;}
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="topbar">
+      <div class="topbarLeft">
+        <div class="brandMark" aria-hidden="true">⬢</div>
+        <div class="brandText">PromptBuilder</div>
+        <div class="topbarDivider" aria-hidden="true"></div>
+        <div class="topbarTitle">比喩構造 × 師匠弟子 会話生成ツール</div>
+      </div>
+      <div class="topbarVersion">v1.0</div>
+    </div>
+  </header>
+
+  <main>
+    <section class="card sticky" id="controlPanel">
+      <h2>操作パネル</h2>
+      <div class="body">
+        <label>題材の呼び名</label>
+        <input id="subjectName" type="text" value="この比喩" placeholder="例：この比喩 / この構造" />
+
+        <label>師匠キャラ</label>
+        <select id="mentorPreset">
+          <option value="穏やかな分析師匠">穏やかな分析師匠</option>
+          <option value="現場感のある実務師匠">現場感のある実務師匠</option>
+          <option value="皮肉屋の老練師匠">皮肉屋の老練師匠</option>
+          <option value="ファインマン風の噛み砕き師匠">ファインマン風の噛み砕き師匠</option>
+          <option value="__custom__">任意入力</option>
+        </select>
+        <input id="mentorCustom" class="customHidden" type="text" placeholder="師匠キャラを入力" />
+
+        <label>弟子キャラ</label>
+        <select id="studentPreset">
+          <option value="素直な初心者">素直な初心者</option>
+          <option value="ツッコミ気味の弟子">ツッコミ気味の弟子</option>
+          <option value="半信半疑の弟子">半信半疑の弟子</option>
+          <option value="実務者目線の弟子">実務者目線の弟子</option>
+          <option value="__custom__">任意入力</option>
+        </select>
+        <input id="studentCustom" class="customHidden" type="text" placeholder="弟子キャラを入力" />
+
+        <label>会話の用途</label>
+        <select id="purpose">
+          <option>教材化</option>
+          <option>記事化</option>
+          <option>SNS投稿の下書き</option>
+          <option>物語プロット</option>
+          <option>解説動画台本</option>
+          <option>カクヨム本文案</option>
+        </select>
+
+        <details open>
+          <summary>出力パラメータ</summary>
+          <div class="body">
+            <label>構造分解度</label>
+            <div class="row"><input id="structureDepth" type="range" min="0" max="10" value="6"><div class="val" id="structureDepthVal">6</div></div>
+            <div class="scaleHint">0: 直感重視 / 5: 対応表あり / 10: 完全分解</div>
+
+            <label>会話劇度</label>
+            <div class="row"><input id="dialogueDrama" type="range" min="0" max="10" value="6"><div class="val" id="dialogueDramaVal">6</div></div>
+            <div class="scaleHint">0: 解説会話 / 5: 自然な掛け合い / 10: かなり芝居がかった会話</div>
+
+            <label>弟子の理解遅延度</label>
+            <div class="row"><input id="studentDelay" type="range" min="0" max="10" value="5"><div class="val" id="studentDelayVal">5</div></div>
+            <div class="scaleHint">0: すぐ理解する / 5: 途中で気づく / 10: 最後に腑に落ちる</div>
+
+            <label>師匠の説明圧</label>
+            <div class="row"><input id="teacherDensity" type="range" min="0" max="10" value="6"><div class="val" id="teacherDensityVal">6</div></div>
+            <div class="scaleHint">0: 短く導く / 5: 適度に説明 / 10: かなり丁寧に教える</div>
+
+            <label>比喩保持度</label>
+            <div class="row"><input id="metaphorRetention" type="range" min="0" max="10" value="6"><div class="val" id="metaphorRetentionVal">6</div></div>
+            <div class="scaleHint">0: 自然に使う / 5: 要所で引用 / 10: 元比喩を強く保持</div>
+
+            <label>パンチライン強度</label>
+            <div class="row"><input id="punchlineStrength" type="range" min="0" max="10" value="6"><div class="val" id="punchlineStrengthVal">6</div></div>
+            <div class="scaleHint">0: 穏やか / 5: 印象に残す / 10: 最後に強く落とす</div>
+          </div>
+        </details>
+
+        <label>プリセット</label>
+        <div class="row"><select id="presetSelect"></select><button class="secondary" type="button" onclick="applyPreset()">適用</button></div>
+
+        <div class="btns">
+          <button class="good" id="buildBtn" onclick="buildPrompt()">プロンプト生成</button>
+          <button id="copyBtn" onclick="copyPrompt()">コピー</button>
+          <button class="secondary" id="downloadBtn" onclick="downloadPrompt()">.txt保存</button>
+          <button class="warn" id="clearBtn" onclick="clearSource()">本文クリア</button>
+        </div>
+      </div>
+
+      <details>
+        <summary>テンプレ確認</summary>
+        <div class="body">
+          <div class="templateBox" id="templateView"></div>
+        </div>
+      </details>
+    </section>
+
+    <section class="card" id="outputPanel">
+      <h2>本文入力 / 生成プロンプト</h2>
+      <div class="body">
+        <div class="preview">
+          <div class="pill"><b>用途</b><span id="purposeState">教材化</span></div>
+          <div class="pill"><b>師匠</b><span id="mentorState">穏やかな分析師匠</span></div>
+          <div class="pill"><b>弟子</b><span id="studentState">素直な初心者</span></div>
+          <div class="pill"><b>コピー状態</b><span id="copyState" class="warnTxt">未コピー</span></div>
+        </div>
+
+        <div id="sourceGroup">
+          <label>ここに比喩・構造化出力・元ネタを貼る</label>
+          <textarea id="source" class="sourceText" placeholder="比喩本文、構造化メモ、元ネタ本文を貼り付け"></textarea>
+        </div>
+
+        <div class="outputHeader">
+          <label>生成プロンプト</label>
+          <button id="toggleOutputFullscreenBtn" class="secondary miniBtn" type="button" onclick="toggleOutputFullscreen()">出力全画面</button>
+        </div>
+        <textarea id="output" class="outText" readonly></textarea>
+      </div>
+    </section>
+  </main>
+
+  <div class="mobileActions">
+    <button class="good" id="mobileBuildBtn" onclick="buildPrompt()">生成</button>
+    <button id="mobileCopyBtn" onclick="copyPrompt()" disabled>コピー</button>
+    <button id="mobileOutputToggleBtn" class="secondary wideOnNarrow" onclick="toggleOutputFullscreen()">出力全画面</button>
+  </div>
+
+  <div id="toast" class="toast">コピーしたで</div>
+
+<script>
+const basePrompt = `あなたは、元ネタ本文の論点を中心に、比喩を説明用レンズとして使いながら「師匠と弟子の会話形式」の最終出力を生成する編集AIです。
+
+目的：
+入力された比喩または構造化出力を、単なる説明文ではなく、師匠と弟子の対話を通じて読者が段階的に理解できる文章へ変換してください。
+
+重要：
+- 会話の中心は必ず元ネタ本文・元論点に置く
+- 元の比喩の意味・構造・感情の方向性を維持する
+- 捏造は禁止
+- 足りない情報は断定しない
+- 比喩をただ説明するのではなく、弟子の疑問と師匠の導きで理解させる
+- 読者が弟子と一緒に気づいていく流れを作る
+- 比喩を舞台設定へ変換せず、説明補助として使う`;
+
+const mentorSpeechDsl = `【師匠発話DSL（口調のみ適用）】
+- 変更対象は師匠の文体のみ。構造・論理・比喩・Source/Target対応・パンチライン生成は変更しない
+- 弟子キャラの文体は現状維持
+
+worldview:
+- 世界は理不尽
+- 正論だけでは勝てない
+- 人間はだいたい勘違いする
+- 本質は構造で見る
+
+reasoningStyle:
+- 本質志向
+- 比喩で説明
+- ツッコミで認知負荷を下げる
+- 相手を小馬鹿にしすぎず導く
+
+speechProfile:
+firstPerson:
+- ワイ
+- ワシ（たまに）
+
+secondPerson:
+- お前
+- 弟子
+
+sentenceRhythm:
+- 短文多め
+- ツッコミ挿入
+- 「草」「いやｗ」「せや」「それな」を自然に薄く混ぜる
+- 長文説教は禁止
+
+typicalPhrases:
+- 草
+- せや
+- いやそれはちゃうｗ
+- お前それ〇〇やん
+- 別ゲーやぞ
+- 何と戦っとるんや
+- そういうことや
+- まあ気持ちはわかる
+
+humorStyle:
+- ネット古参の軽口
+- 例えツッコミ
+- 相手を傷つけない雑さ
+
+forbidden:
+- 過度な罵倒
+- 露悪
+- 高圧的な人格攻撃
+- なんJテンプレの過剰コピペ感
+- 完全なネタキャラ化
+
+responsePattern:
+1. 弟子の誤解を軽く受け止める
+2. ツッコミでズラす
+3. 比喩で構造説明
+4. 本質を刺す
+5. 軽く締める
+
+口調のNG例:
+- 「ほう、それは興味深い視点だね。では一つ問おう。」
+- 「君の前提には重大な認識の誤りがある」
+
+口調のOK例:
+- 「いや気持ちはわかるｗ でもそこ勘違いしやすいんよ」
+- 「お前それ“安全そうに見える”と“安全”をごっちゃにしとるｗ」`;
+
+const dsl = {
+  version: '1.0.0',
+  name: 'metaphor_dialogue_prompt_dsl',
+  scales: {
+    structureDepth: {label:'構造分解度', hints:['直感重視','対応表あり','完全分解']},
+    dialogueDrama: {label:'会話劇度', hints:['解説会話','自然な掛け合い','かなり芝居がかった会話']},
+    studentDelay: {label:'弟子の理解遅延度', hints:['すぐ理解する','途中で気づく','最後に腑に落ちる']},
+    teacherDensity: {label:'師匠の説明圧', hints:['短く導く','適度に説明','かなり丁寧に教える']},
+    metaphorRetention: {label:'比喩保持度', hints:['自然に使う','要所で引用','元比喩を強く保持']},
+    punchlineStrength: {label:'パンチライン強度', hints:['穏やか','印象に残す','最後に強く落とす']}
+  },
+  presets: {
+    teaching: {
+      label: '教材向け',
+      values: {structureDepth:8, dialogueDrama:3, studentDelay:6, teacherDensity:8, metaphorRetention:7, punchlineStrength:4}
+    },
+    reading: {
+      label: '読み物向け',
+      values: {structureDepth:6, dialogueDrama:7, studentDelay:7, teacherDensity:5, metaphorRetention:6, punchlineStrength:8}
+    },
+    sns: {
+      label: 'SNS向け',
+      values: {structureDepth:4, dialogueDrama:6, studentDelay:4, teacherDensity:3, metaphorRetention:5, punchlineStrength:9}
+    },
+    kakuyomu: {
+      label: 'カクヨム向け',
+      values: {structureDepth:7, dialogueDrama:8, studentDelay:8, teacherDensity:6, metaphorRetention:7, punchlineStrength:8}
+    }
+  }
+};
+
+const state = {
+  defaultPresetKey: 'teaching',
+  rangeIds: ['structureDepth','dialogueDrama','studentDelay','teacherDensity','metaphorRetention','punchlineStrength'],
+  watchIds: ['subjectName','mentorPreset','mentorCustom','studentPreset','studentCustom','purpose','source','presetSelect']
+};
+
+function v(id){ return document.getElementById(id).value; }
+
+function bindRange(id){
+  const el = document.getElementById(id);
+  const out = document.getElementById(id + 'Val');
+  const sync = () => {
+    out.textContent = el.value;
+    updateState();
+  };
+  el.addEventListener('input', sync);
+  sync();
+}
+
+function initPresets(){
+  const sel = document.getElementById('presetSelect');
+  sel.innerHTML = '';
+  Object.entries(dsl.presets).forEach(([key, preset]) => {
+    const opt = document.createElement('option');
+    opt.value = key;
+    opt.textContent = preset.label;
+    sel.appendChild(opt);
+  });
+  sel.value = state.defaultPresetKey;
+}
+
+function applyPreset(){
+  const preset = dsl.presets[v('presetSelect')];
+  if(!preset) return;
+  Object.entries(preset.values).forEach(([key, value]) => {
+    const input = document.getElementById(key);
+    input.value = value;
+    document.getElementById(key + 'Val').textContent = value;
+  });
+  updateState();
+  buildPrompt();
+}
+
+function getMentor(){
+  return v('mentorPreset') === '__custom__' ? (v('mentorCustom').trim() || '任意の師匠') : v('mentorPreset');
+}
+
+function getStudent(){
+  return v('studentPreset') === '__custom__' ? (v('studentCustom').trim() || '任意の弟子') : v('studentPreset');
+}
+
+function syncCustomFields(){
+  const mentorCustom = document.getElementById('mentorCustom');
+  const studentCustom = document.getElementById('studentCustom');
+  mentorCustom.classList.toggle('customHidden', v('mentorPreset') !== '__custom__');
+  studentCustom.classList.toggle('customHidden', v('studentPreset') !== '__custom__');
+}
+
+function buildPrompt(){
+  const src = v('source').trim();
+  const subject = v('subjectName').trim() || 'この比喩';
+  const mentor = getMentor();
+  const student = getStudent();
+  const purpose = v('purpose');
+  const structureDepth = Number(v('structureDepth'));
+  const dialogueDrama = Number(v('dialogueDrama'));
+  const studentDelay = Number(v('studentDelay'));
+  const teacherDensity = Number(v('teacherDensity'));
+  const metaphorRetention = Number(v('metaphorRetention'));
+  const punchlineStrength = Number(v('punchlineStrength'));
+
+  const lines = [];
+  lines.push('---');
+  lines.push(basePrompt);
+  lines.push('');
+  lines.push(mentorSpeechDsl);
+  lines.push('');
+  lines.push('【今回の題材】');
+  lines.push(subject);
+  lines.push('');
+  lines.push('【師匠キャラ】');
+  lines.push(mentor);
+  lines.push('');
+  lines.push('【弟子キャラ】');
+  lines.push(student);
+  lines.push('');
+  lines.push('【用途】');
+  lines.push(purpose);
+  lines.push('');
+  lines.push('【出力制御】');
+  lines.push(`- 構造分解度：${structureDepth}/10`);
+  lines.push(`- 会話劇度：${dialogueDrama}/10`);
+  lines.push(`- 弟子の理解遅延度：${studentDelay}/10`);
+  lines.push(`- 師匠の説明圧：${teacherDensity}/10`);
+  lines.push(`- 比喩保持度：${metaphorRetention}/10`);
+  lines.push(`- パンチライン強度：${punchlineStrength}/10`);
+  lines.push('');
+  lines.push('【比喩の扱い（最重要）】');
+  lines.push('入力に含まれる比喩は、会話劇の舞台設定に変換しないでください。');
+  lines.push('');
+  lines.push('比喩は、師匠が元論点を説明するために途中で使う「説明用レンズ」として扱ってください。');
+  lines.push('');
+  lines.push('会話の中心は必ず元ネタ本文・元論点に置いてください。');
+  lines.push('');
+  lines.push('比喩を別ジャンルの架空エピソードへ展開することは禁止です。');
+  lines.push('');
+  lines.push('弟子はまず元ネタの悩みや違和感を話し、師匠がそれを分解する流れにしてください。');
+  lines.push('');
+  lines.push('比喩は中盤以降、師匠の説明または弟子の気づきとして短く使ってください。');
+  lines.push('');
+  lines.push('最後は比喩ではなく、元論点に戻して締めてください。');
+  lines.push('');
+  lines.push('【処理手順】');
+  lines.push('1. 弟子が元ネタ本文の悩み・違和感を話す');
+  lines.push('2. 師匠がすぐに答えず、問い返す');
+  lines.push('3. 弟子が表面的な理解をする');
+  lines.push('4. 師匠が元論点を分解する');
+  lines.push('5. 中盤以降で比喩を短く出し、Source Domain と Target Domain の対応を示す');
+  lines.push('6. 弟子が比喩によって構造を理解する');
+  lines.push('7. 最後は元論点へ戻し、「なるほど、問題の核はそこだったのか」に着地させる');
+  lines.push('8. 短いパンチラインで締める');
+  lines.push('');
+  lines.push('【会話設計】');
+  lines.push('- 師匠は答えを一気に言わない');
+  lines.push('- 弟子に問いを投げる');
+  lines.push('- 弟子は疑問・誤解・ツッコミを挟む');
+  lines.push('- 師匠がそれを修正しながら構造を見せる');
+  lines.push('- 読者が自然に理解できる順序にする');
+  lines.push('- 比喩は主役にせず、説明補助として必要な場面だけ使う');
+  lines.push('');
+  lines.push('【出力形式】');
+  lines.push('## 【師匠と弟子の会話】');
+  lines.push('');
+  lines.push('師匠「……」');
+  lines.push('弟子「……」');
+  lines.push('');
+  lines.push('この形式で会話本文を書く。');
+  lines.push('');
+  lines.push('必要なら会話後に短く以下を付ける。');
+  lines.push('');
+  lines.push('## 【構造メモ】');
+  lines.push('- Source Domain：');
+  lines.push('- Target Domain：');
+  lines.push('- 不条理の核：');
+  lines.push('- パンチライン：');
+  lines.push('');
+  lines.push('ただし、用途が「SNS投稿の下書き」の場合は構造メモを省略してよい。');
+  lines.push('');
+  lines.push('【禁止】');
+  lines.push('- 報告書のように硬くしすぎる');
+  lines.push('- 対応表だけで終わる');
+  lines.push('- 弟子が最初から全部理解している');
+  lines.push('- 師匠が一方的に長文解説し続ける');
+  lines.push('- 比喩をメイン舞台に変換しない');
+  lines.push('- 比喩の登場人物を主役化しない');
+  lines.push('- 元ネタを別ジャンルの架空事件に置き換えない');
+  lines.push('- 比喩だけで会話劇を進行しない');
+  lines.push('- Source Domainを物語本文そのものにしない');
+  lines.push('- 元比喩の怒り・ズルさ・不条理を薄める');
+  lines.push('- 「これはつまり」と毎回説明しすぎる');
+  lines.push('- 生成過程やプロンプトの話を本文に出す');
+  lines.push('');
+  lines.push('【入力本文】');
+  lines.push(src || 'ここにtextareaの本文を入れる');
+  lines.push('---');
+
+  document.getElementById('output').value = lines.join('\n');
+  document.getElementById('copyState').textContent = '生成済み';
+  document.getElementById('copyState').className = 'ok';
+
+  const btn = document.getElementById('buildBtn');
+  const mobileBtn = document.getElementById('mobileBuildBtn');
+  const old = btn.textContent;
+  const oldMobile = mobileBtn.textContent;
+  btn.textContent = '生成OK';
+  mobileBtn.textContent = '生成OK';
+  btn.classList.add('clicked');
+  mobileBtn.classList.add('clicked');
+  setTimeout(() => {
+    btn.classList.remove('clicked');
+    mobileBtn.classList.remove('clicked');
+    btn.textContent = old;
+    mobileBtn.textContent = oldMobile;
+  }, 800);
+  setMobileCopyEnabled(true);
+}
+
+function updateState(){
+  syncCustomFields();
+  document.getElementById('purposeState').textContent = v('purpose');
+  document.getElementById('mentorState').textContent = getMentor();
+  document.getElementById('studentState').textContent = getStudent();
+}
+
+function isMobileView(){
+  return window.matchMedia('(max-width: 980px)').matches;
+}
+
+function setFullscreenButtonLabel(isFullscreen){
+  const label = isFullscreen ? '全画面終了' : '出力全画面';
+  document.getElementById('toggleOutputFullscreenBtn').textContent = label;
+  document.getElementById('mobileOutputToggleBtn').textContent = label;
+}
+
+function toggleOutputFullscreen(force){
+  if(!isMobileView()) return;
+  const body = document.body;
+  const next = typeof force === 'boolean' ? force : !body.classList.contains('outputFullscreen');
+  body.classList.toggle('outputFullscreen', next);
+  setFullscreenButtonLabel(next);
+  if(next){
+    const out = document.getElementById('output');
+    out.focus();
+    out.scrollTop = 0;
+  }
+}
+
+function setMobileCopyEnabled(enabled){
+  document.getElementById('mobileCopyBtn').disabled = !enabled;
+}
+
+async function copyPrompt(){
+  if(!document.getElementById('output').value.trim()) buildPrompt();
+  await navigator.clipboard.writeText(document.getElementById('output').value);
+  document.getElementById('copyState').textContent = 'コピー済み';
+  document.getElementById('copyState').className = 'ok';
+  const t = document.getElementById('toast');
+  t.style.display = 'block';
+  setTimeout(() => t.style.display='none', 1400);
+
+  const btn = document.getElementById('copyBtn');
+  const mobileBtn = document.getElementById('mobileCopyBtn');
+  const old = btn.textContent;
+  const oldMobile = mobileBtn.textContent;
+  btn.textContent = 'コピーOK';
+  mobileBtn.textContent = 'コピーOK';
+  btn.classList.add('clicked');
+  mobileBtn.classList.add('clicked');
+  setTimeout(() => {
+    btn.classList.remove('clicked');
+    mobileBtn.classList.remove('clicked');
+    btn.textContent = old;
+    mobileBtn.textContent = oldMobile;
+  }, 800);
+}
+
+function downloadPrompt(){
+  if(!document.getElementById('output').value.trim()) buildPrompt();
+  const blob = new Blob([document.getElementById('output').value], {type:'text/plain;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'metaphor_dialogue_prompt.txt';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  const btn = document.getElementById('downloadBtn');
+  btn.classList.add('clicked');
+  setTimeout(() => btn.classList.remove('clicked'), 800);
+}
+
+function clearSource(){
+  document.getElementById('source').value = '';
+  const btn = document.getElementById('clearBtn');
+  btn.classList.add('clicked');
+  setTimeout(() => btn.classList.remove('clicked'), 800);
+}
+
+function setupUiBindings(){
+  state.rangeIds.forEach(bindRange);
+  state.watchIds.forEach(id => {
+    const el = document.getElementById(id);
+    el.addEventListener('input', updateState);
+    el.addEventListener('change', updateState);
+  });
+  document.getElementById('templateView').textContent =
+    basePrompt + '\n\n---\n\nDSL CONFIG LAYER\n' + JSON.stringify(dsl, null, 2);
+}
+
+function setupRuntimeEvents(){
+  window.addEventListener('resize', () => {
+    if(!isMobileView() && document.body.classList.contains('outputFullscreen')){
+      document.body.classList.remove('outputFullscreen');
+      setFullscreenButtonLabel(false);
+    }
+  });
+
+  let lastTouchEndAt = 0;
+  document.addEventListener('touchend', (e) => {
+    const now = Date.now();
+    const delta = now - lastTouchEndAt;
+    const isDoubleTap = delta > 0 && delta < 320;
+    const inEditable = e.target.closest('input, textarea, select, [contenteditable="true"]');
+    if(isDoubleTap && !inEditable){
+      e.preventDefault();
+    }
+    lastTouchEndAt = now;
+  }, {passive:false});
+}
+
+setupUiBindings();
+setupRuntimeEvents();
+setFullscreenButtonLabel(false);
+initPresets();
+applyPreset();
+document.getElementById('output').value = '';
+document.getElementById('copyState').textContent = '未コピー';
+document.getElementById('copyState').className = 'warnTxt';
+setMobileCopyEnabled(false);
+updateState();
+</script>
+</body>
+</html>
