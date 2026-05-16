@@ -242,11 +242,11 @@
           <summary>出力パラメータ</summary>
           <div class="body">
             <label>構造分解度</label>
-            <div class="row"><input id="structureDepth" type="range" min="0" max="10" value="6"><div class="val" id="structureDepthVal">6</div></div>
+            <div class="row"><input id="structureDepth" type="range" min="0" max="10" value="1"><div class="val" id="structureDepthVal">1</div></div>
             <div class="scaleHint">0: 直感重視 / 5: 対応表あり / 10: 完全分解</div>
 
             <label>会話劇度</label>
-            <div class="row"><input id="dialogueDrama" type="range" min="0" max="10" value="6"><div class="val" id="dialogueDramaVal">6</div></div>
+            <div class="row"><input id="dialogueDrama" type="range" min="0" max="10" value="5"><div class="val" id="dialogueDramaVal">5</div></div>
             <div class="scaleHint">0: 解説会話 / 5: 自然な掛け合い / 10: かなり芝居がかった会話</div>
 
             <label>弟子の理解遅延度</label>
@@ -254,15 +254,15 @@
             <div class="scaleHint">0: すぐ理解する / 5: 途中で気づく / 10: 最後に腑に落ちる</div>
 
             <label>師匠の説明圧</label>
-            <div class="row"><input id="teacherDensity" type="range" min="0" max="10" value="6"><div class="val" id="teacherDensityVal">6</div></div>
+            <div class="row"><input id="teacherDensity" type="range" min="0" max="10" value="0"><div class="val" id="teacherDensityVal">0</div></div>
             <div class="scaleHint">0: 短く導く / 5: 適度に説明 / 10: かなり丁寧に教える</div>
 
             <label>比喩保持度</label>
-            <div class="row"><input id="metaphorRetention" type="range" min="0" max="10" value="6"><div class="val" id="metaphorRetentionVal">6</div></div>
+            <div class="row"><input id="metaphorRetention" type="range" min="0" max="10" value="2"><div class="val" id="metaphorRetentionVal">2</div></div>
             <div class="scaleHint">0: 自然に使う / 5: 要所で引用 / 10: 元比喩を強く保持</div>
 
             <label>パンチライン強度</label>
-            <div class="row"><input id="punchlineStrength" type="range" min="0" max="10" value="6"><div class="val" id="punchlineStrengthVal">6</div></div>
+            <div class="row"><input id="punchlineStrength" type="range" min="0" max="10" value="5"><div class="val" id="punchlineStrengthVal">5</div></div>
             <div class="scaleHint">0: 穏やか / 5: 印象に残す / 10: 最後に強く落とす</div>
           </div>
         </details>
@@ -447,11 +447,36 @@ const dsl = {
   }
 };
 
+const storageKey = 'metaphorDialogueOutputParams';
 const state = {
   defaultPresetKey: 'teaching',
   rangeIds: ['structureDepth','dialogueDrama','studentDelay','teacherDensity','metaphorRetention','punchlineStrength'],
   watchIds: ['subjectName','mentorPreset','mentorCustom','studentPreset','studentCustom','purpose','source','presetSelect','thoughts']
 };
+
+function loadStoredParams(){
+  const raw = localStorage.getItem(storageKey);
+  if(!raw) return;
+  try {
+    const data = JSON.parse(raw);
+    state.rangeIds.forEach((id) => {
+      if(typeof data[id] === 'number'){
+        const input = document.getElementById(id);
+        const value = Math.min(10, Math.max(0, data[id]));
+        input.value = value;
+        document.getElementById(id + 'Val').textContent = value;
+      }
+    });
+  } catch (e) {
+    console.warn('stored params load failed', e);
+  }
+}
+
+function saveParams(){
+  const data = {};
+  state.rangeIds.forEach((id) => data[id] = Number(v(id)));
+  localStorage.setItem(storageKey, JSON.stringify(data));
+}
 
 function bindRange(id){
   const el = document.getElementById(id);
@@ -460,7 +485,7 @@ function bindRange(id){
     out.textContent = el.value;
     updateState();
   };
-  el.addEventListener('input', sync);
+  el.addEventListener('input', () => { sync(); saveParams(); });
   sync();
 }
 
@@ -485,6 +510,7 @@ function applyPreset(){
     document.getElementById(key + 'Val').textContent = value;
   });
   updateState();
+  saveParams();
   buildPrompt();
 }
 
@@ -728,6 +754,12 @@ function clearSource(){
 
 function setupUiBindings(){
   state.rangeIds.forEach(bindRange);
+  loadStoredParams();
+  state.rangeIds.forEach((id) => {
+    const input = document.getElementById(id);
+    const out = document.getElementById(id + 'Val');
+    out.textContent = input.value;
+  });
   state.watchIds.forEach(id => {
     const el = document.getElementById(id);
     el.addEventListener('input', updateState);
