@@ -268,7 +268,12 @@
         </details>
 
         <label>プリセット</label>
-        <div class="row"><select id="presetSelect"></select><button class="secondary" type="button" onclick="applyPreset()">適用</button></div>
+        <div class="row"><select id="presetSelect">
+            <option value="teaching">教材向け</option>
+            <option value="reading">読み物向け</option>
+            <option value="sns">SNS向け</option>
+            <option value="kakuyomu">カクヨム向け</option>
+          </select><button class="secondary" type="button" onclick="applyPreset()">適用</button></div>
 
         <div class="btns">
           <button class="good" id="buildBtn" onclick="buildPrompt()">プロンプト生成</button>
