@@ -222,12 +222,12 @@
 
         <label>会話の用途</label>
         <select id="purpose">
+          <option>カクヨム本文案</option>
+          <option>SNS投稿の下書き</option>
+          <option>解説動画台本</option>
           <option>教材化</option>
           <option>記事化</option>
-          <option>SNS投稿の下書き</option>
           <option>物語プロット</option>
-          <option>解説動画台本</option>
-          <option>カクヨム本文案</option>
         </select>
 
         <label>思想・価値観（任意）</label>
@@ -269,10 +269,10 @@
 
         <label>プリセット</label>
         <div class="row"><select id="presetSelect">
+            <option value="kakuyomu">カクヨム向け</option>
+            <option value="sns">SNS向け</option>
             <option value="teaching">教材向け</option>
             <option value="reading">読み物向け</option>
-            <option value="sns">SNS向け</option>
-            <option value="kakuyomu">カクヨム向け</option>
           </select><button class="secondary" type="button" onclick="applyPreset()">適用</button></div>
 
         <div class="btns">
