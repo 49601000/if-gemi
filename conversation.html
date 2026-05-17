@@ -342,7 +342,7 @@
     <button id="mobileOutputToggleBtn" class="secondary wideOnNarrow" onclick="toggleOutputFullscreen()">出力全画面</button>
   </div>
 
-  <div id="toast" class="toast">コピーしたで</div>
+  <div id="toast" class="toast">コピー完了</div>
 
 <script>
 const basePrompt = `あなたは、元ネタ本文の論点を中心に、比喩を説明用レンズとして使いながら「師匠と弟子の会話形式」の最終出力を生成する編集AIです。
@@ -482,21 +482,21 @@ const dsl = {
     punchlineStrength: {label:'パンチライン強度', hints:['穏やか','印象に残す','最後に強く落とす']}
   },
   presets: {
-    teaching: {
-      label: '教材向け',
-      values: {structureDepth:8, dialogueDrama:3, studentDelay:6, teacherDensity:8, metaphorRetention:7, punchlineStrength:4}
-    },
-    reading: {
-      label: '読み物向け',
-      values: {structureDepth:6, dialogueDrama:7, studentDelay:7, teacherDensity:5, metaphorRetention:6, punchlineStrength:8}
+    kakuyomu: {
+      label: 'カクヨム向け',
+      values: {structureDepth:0, dialogueDrama:5, studentDelay:8, teacherDensity:0, metaphorRetention:1, punchlineStrength:5}
     },
     sns: {
       label: 'SNS向け',
       values: {structureDepth:4, dialogueDrama:6, studentDelay:4, teacherDensity:3, metaphorRetention:5, punchlineStrength:9}
     },
-    kakuyomu: {
-      label: 'カクヨム向け',
-      values: {structureDepth:7, dialogueDrama:8, studentDelay:8, teacherDensity:6, metaphorRetention:7, punchlineStrength:8}
+    reading: {
+      label: '読み物向け',
+      values: {structureDepth:6, dialogueDrama:7, studentDelay:7, teacherDensity:5, metaphorRetention:6, punchlineStrength:8}
+    },
+    teaching: {
+      label: '教材向け',
+      values: {structureDepth:8, dialogueDrama:3, studentDelay:6, teacherDensity:8, metaphorRetention:7, punchlineStrength:4}
     }
   }
 };
