@@ -285,10 +285,12 @@
 
         <div class="btns">
           <button class="good" id="buildBtn" onclick="buildPrompt()">プロンプト生成</button>
+          <button class="secondary" id="saveParamsBtn" onclick="saveSettings()">設定を保存</button>
           <button id="copyBtn" onclick="copyPrompt()">コピー</button>
           <button class="secondary" id="downloadBtn" onclick="downloadPrompt()">.txt保存</button>
           <button class="warn" id="clearBtn" onclick="clearSource()">本文クリア</button>
         </div>
+        <div class="scaleHint" id="saveParamsState">現在の調整は未保存</div>
       </div>
 
       <details>
@@ -423,8 +425,12 @@ const conversationConstraints = `【会話生成制約】
 - 弟子は賢く概念整理しすぎない。理解は段階的に、言葉は素朴にする。
 - 師匠の説明は短文化し、1ターンで語り切らない。
 - 価値観はブログ記事のように箇条書き列挙せず、会話の流れに溶かす。
+- セリフは「説明としてうまい」より「実際に人が喋りそう」を優先する。
+- 弟子は素朴に驚く。理解者ポジションに飛ばない。
+- 概念をラベル化して説明しない（〜主義、〜構造、〜論でまとめない）。
 - 「つまり〜」「要するに〜」「これは〜という構造です」は使わない。
 - 最後は軽いオチや余韻のある雑な終わり方にする。
+- 多少雑でも、会話として自然な言い回しを採用する。
 - 思想は説明文として直接吐かず、会話・ツッコミ・反転として出す。`;
 
 const dsl = {
@@ -462,7 +468,8 @@ const storageKey = 'metaphorDialogueOutputParams';
 const state = {
   defaultPresetKey: 'teaching',
   rangeIds: ['structureDepth','dialogueDrama','studentDelay','teacherDensity','metaphorRetention','punchlineStrength'],
-  watchIds: ['subjectName','mentorPreset','mentorCustom','studentPreset','studentCustom','purpose','source','presetSelect','thoughts','philosophyTiming']
+  watchIds: ['subjectName','mentorPreset','mentorCustom','studentPreset','studentCustom','purpose','source','presetSelect','thoughts','philosophyTiming'],
+  hasStoredParams: false
 };
 
 function v(id){
@@ -472,19 +479,23 @@ function v(id){
 
 function loadStoredParams(){
   const raw = localStorage.getItem(storageKey);
-  if(!raw) return;
+  if(!raw) return false;
   try {
     const data = JSON.parse(raw);
+    let loaded = false;
     state.rangeIds.forEach((id) => {
       if(typeof data[id] === 'number'){
         const input = document.getElementById(id);
         const value = Math.min(10, Math.max(0, data[id]));
         input.value = value;
         document.getElementById(id + 'Val').textContent = value;
+        loaded = true;
       }
     });
+    return loaded;
   } catch (e) {
     console.warn('stored params load failed', e);
+    return false;
   }
 }
 
@@ -494,6 +505,16 @@ function saveParams(){
   localStorage.setItem(storageKey, JSON.stringify(data));
 }
 
+function setSaveParamsState(text, className){
+  const el = document.getElementById('saveParamsState');
+  el.textContent = text;
+  el.className = className;
+}
+
+function markParamsDirty(){
+  setSaveParamsState('現在の調整は未保存', 'scaleHint warnTxt');
+}
+
 function bindRange(id){
   const el = document.getElementById(id);
   const out = document.getElementById(id + 'Val');
@@ -501,7 +522,7 @@ function bindRange(id){
     out.textContent = el.value;
     updateState();
   };
-  el.addEventListener('input', () => { sync(); saveParams(); });
+  el.addEventListener('input', () => { sync(); markParamsDirty(); });
   sync();
 }
 
@@ -526,8 +547,21 @@ function applyPreset(){
     document.getElementById(key + 'Val').textContent = value;
   });
   updateState();
-  saveParams();
+  markParamsDirty();
   buildPrompt();
+}
+
+function saveSettings(){
+  saveParams();
+  const btn = document.getElementById('saveParamsBtn');
+  const old = btn.textContent;
+  btn.textContent = '保存OK';
+  btn.classList.add('clicked');
+  setTimeout(() => {
+    btn.classList.remove('clicked');
+    btn.textContent = old;
+  }, 800);
+  setSaveParamsState('保存済み（この値を次回起動時に使用）', 'scaleHint ok');
 }
 
 function getMentor(){
@@ -657,6 +691,7 @@ function buildPrompt(){
   lines.push('- 弟子は疑問・誤解・ツッコミを挟む');
   lines.push('- 師匠がそれを修正しながら構造を見せる');
   lines.push('- セリフとして自然かを最優先し、説明文っぽさを避ける');
+  lines.push('- 多少雑でも、会話として自然な言い回しを優先する');
   lines.push('- 読者が自然に理解できる順序にする');
   lines.push('- 比喩は主役にせず、説明補助として必要な場面だけ使う');
   lines.push('');
@@ -687,6 +722,7 @@ function buildPrompt(){
   lines.push('- 師匠の説明が長く、1発話で論点を言い切る');
   lines.push('- ブログ記事のように価値観を列挙する');
   lines.push('- セミナー受講生のような「深い…！」系リアクション');
+  lines.push('- 概念をラベル化して話をまとめる（〜主義、〜構造、〜論の連発）');
   lines.push('- 比喩をメイン舞台に変換しない');
   lines.push('- 比喩の登場人物を主役化しない');
   lines.push('- 元ネタを別ジャンルの架空事件に置き換えない');
@@ -806,7 +842,7 @@ function clearSource(){
 
 function setupUiBindings(){
   state.rangeIds.forEach(bindRange);
-  loadStoredParams();
+  state.hasStoredParams = loadStoredParams();
   state.rangeIds.forEach((id) => {
     const input = document.getElementById(id);
     const out = document.getElementById(id + 'Val');
@@ -846,7 +882,12 @@ setupUiBindings();
 setupRuntimeEvents();
 setFullscreenButtonLabel(false);
 initPresets();
-applyPreset();
+if(state.hasStoredParams){
+  setSaveParamsState('保存済み設定を読込済み', 'scaleHint ok');
+  buildPrompt();
+} else {
+  applyPreset();
+}
 document.getElementById('output').value = '';
 document.getElementById('copyState').textContent = '未コピー';
 document.getElementById('copyState').className = 'warnTxt';
