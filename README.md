@@ -48,6 +48,7 @@
 - DSL先行で口調・代名詞・禁止語を固定
 - 6パラメータは **deterministic分岐ではなく prompt steering parameter**
 - 詳細仕様・UI→プロンプト対応は [`docs/conversation-spec.md`](docs/conversation-spec.md) を参照
+- 実際の出力挙動は `conversation.html` の `buildPrompt()` が正本（specのfetchプレビュー機能は非採用）
 - 注記: 同じ数値でもモデル差で効き方が多少変わるため、最終調整は実出力で確認する
 
 ### `proofreading.html`
