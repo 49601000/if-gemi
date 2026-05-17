@@ -238,6 +238,14 @@
 ・ノーリスク信仰ではなく harm reduction
 ・最適解より退場しない設計"></textarea>
 
+        <label>思想の反映タイミング</label>
+        <select id="philosophyTiming">
+          <option value="all">全体に反映</option>
+          <option value="twist" selected>終盤のどんでん返しで反映</option>
+          <option value="final">締めの一言だけに反映</option>
+          <option value="none">反映しない</option>
+        </select>
+
         <details open>
           <summary>出力パラメータ</summary>
           <div class="body">
@@ -414,7 +422,7 @@ const conversationConstraints = `【会話生成制約】
 - 弟子は素朴にズレる。誤解やツッコミ役として読者の代理になる。
 - 「つまり〜」「要するに〜」「これは〜という構造です」は使わない。
 - 最後は軽いオチや余韻のある雑な終わり方にする。
-- 思想・価値観入力がある場合は、その内容を師匠の価値観として自然に滲ませ、説明文として直接吐かない。`;
+- 思想は説明文として直接吐かず、会話・ツッコミ・反転として出す。`;
 
 const dsl = {
   version: '1.0.0',
@@ -451,7 +459,7 @@ const storageKey = 'metaphorDialogueOutputParams';
 const state = {
   defaultPresetKey: 'teaching',
   rangeIds: ['structureDepth','dialogueDrama','studentDelay','teacherDensity','metaphorRetention','punchlineStrength'],
-  watchIds: ['subjectName','mentorPreset','mentorCustom','studentPreset','studentCustom','purpose','source','presetSelect','thoughts']
+  watchIds: ['subjectName','mentorPreset','mentorCustom','studentPreset','studentCustom','purpose','source','presetSelect','thoughts','philosophyTiming']
 };
 
 function v(id){
@@ -527,6 +535,16 @@ function getStudent(){
   return v('studentPreset') === '__custom__' ? (v('studentCustom').trim() || '任意の弟子') : v('studentPreset');
 }
 
+function getPhilosophyTimingLabel(value){
+  const labels = {
+    all: '全体に反映',
+    twist: '終盤のどんでん返しで反映',
+    final: '締めの一言だけに反映',
+    none: '反映しない'
+  };
+  return labels[value] || labels.twist;
+}
+
 function syncCustomFields(){
   const mentorCustom = document.getElementById('mentorCustom');
   const studentCustom = document.getElementById('studentCustom');
@@ -541,6 +559,9 @@ function buildPrompt(){
   const student = getStudent();
   const purpose = v('purpose');
   const thoughts = v('thoughts').trim();
+  const philosophyTiming = v('philosophyTiming') || 'twist';
+  const philosophyTimingLabel = getPhilosophyTimingLabel(philosophyTiming);
+  const shouldUsePhilosophy = thoughts && philosophyTiming !== 'none';
   const structureDepth = Number(v('structureDepth'));
   const dialogueDrama = Number(v('dialogueDrama'));
   const studentDelay = Number(v('studentDelay'));
@@ -575,17 +596,32 @@ function buildPrompt(){
   lines.push(`- 師匠の説明圧：${teacherDensity}/10`);
   lines.push(`- 比喩保持度：${metaphorRetention}/10`);
   lines.push(`- パンチライン強度：${punchlineStrength}/10`);
-  if(thoughts){
-    lines.push('');
-    lines.push('【思想・価値観（任意）】');
+  lines.push('');
+  lines.push('【思想・価値観】');
+  if(shouldUsePhilosophy){
     lines.push(thoughts);
-    lines.push('');
-    lines.push('【思想注入ルール】');
-    lines.push('- この内容は師匠の価値観や会話の着地点として自然に反映する。');
-    lines.push('- 露骨な説明文として吐かない。');
-    lines.push('- 会話の中で滲ませて、最後に直接言い切らない。');
-    lines.push('- 弟子の誤解や気づきを使って出す。');
+  } else if(philosophyTiming === 'none'){
+    lines.push('（反映しないモードのため未使用）');
+  } else {
+    lines.push('（未入力）');
   }
+  lines.push('');
+  lines.push('【思想の反映タイミング】');
+  lines.push(philosophyTimingLabel);
+  lines.push('');
+  lines.push('【思想反映ルール】');
+  lines.push('- 「全体に反映」の場合：思想を会話全体の価値観として自然ににじませる。説教口調・解説口調にしない。');
+  lines.push('- 「終盤のどんでん返しで反映」の場合：序盤〜中盤では思想を出さず、通常の比喩ロジックで進める。読者が一度、素直な結論に誘導されたところで終盤に思想を投入し、視点を反転させる。思想は最初からの前提ではなく、最後に出てくる補助線として扱う。');
+  lines.push('- 「締めの一言だけに反映」の場合：思想は最後の1〜2往復、または師匠の最後の一言だけに反映する。');
+  lines.push('- 「反映しない」の場合：思想は使用しない。');
+  lines.push('');
+  lines.push('【思想反映時の注意】');
+  lines.push('- 思想を説明文としてそのまま吐かない。');
+  lines.push('- 弟子に「つまり〜ですね」と整理させすぎない。');
+  lines.push('- 師匠に長文で思想を語らせない。');
+  lines.push('- 思想はキャラの会話・ツッコミ・反転として出す。');
+  lines.push('- 特に「終盤のどんでん返し」モードでは、序盤から思想を漏らしすぎない。');
+  lines.push('- 反転後も綺麗に締めすぎず、軽いオチや余韻で終える。');
   lines.push('');
   lines.push('【比喩の扱い（最重要）】');
   lines.push('入力に含まれる比喩は、会話劇の舞台設定に変換しないでください。');
@@ -682,7 +718,9 @@ function updateState(){
   document.getElementById('purposeState').textContent = v('purpose');
   document.getElementById('mentorState').textContent = getMentor();
   document.getElementById('studentState').textContent = getStudent();
-  document.getElementById('thoughtsState').textContent = v('thoughts').trim() ? 'あり' : '未設定';
+  const hasThoughts = v('thoughts').trim();
+  const timing = getPhilosophyTimingLabel(v('philosophyTiming') || 'twist');
+  document.getElementById('thoughtsState').textContent = hasThoughts ? `あり / ${timing}` : '未設定';
 }
 
 function isMobileView(){
