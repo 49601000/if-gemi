@@ -151,6 +151,10 @@
           <option>修正箇所＋前後1〜2文</option>
           <option>本文全体に反映</option>
         </select>
+        <div class="checks" style="margin-top:10px">
+          <label><input type="checkbox" id="removeStructureMemo" checked /> 構造メモを削除する</label>
+        </div>
+        <div class="scaleHint">構造メモをAIに見せず本文だけ校正したい場合に便利</div>
 
         <div class="btns">
           <button class="good" id="buildBtn" type="button" onclick="buildPrompt()">プロンプト生成</button>
@@ -192,7 +196,7 @@
   <script>
     const idsForDirty = [
       'mode','targetText','editIntent','editStrength','outputFormat','returnScope','sourceText',
-      'keepFlow','keepTone','keepMetaphor','keepMemo','banRewrite'
+      'keepFlow','keepTone','keepMetaphor','keepMemo','banRewrite','removeStructureMemo'
     ];
     const STORAGE_KEY = 'moshiJemi_proofreading_state';
 
@@ -247,6 +251,7 @@
         keepMetaphor: checked('keepMetaphor'),
         keepMemo: checked('keepMemo'),
         banRewrite: checked('banRewrite'),
+        removeStructureMemo: checked('removeStructureMemo'),
         output: v('output'),
         dirtyStateText: document.getElementById('dirtyState').textContent,
         dirtyStateClass: document.getElementById('dirtyState').className,
@@ -273,6 +278,7 @@
         if(typeof data.keepMetaphor === 'boolean') document.getElementById('keepMetaphor').checked = data.keepMetaphor;
         if(typeof data.keepMemo === 'boolean') document.getElementById('keepMemo').checked = data.keepMemo;
         if(typeof data.banRewrite === 'boolean') document.getElementById('banRewrite').checked = data.banRewrite;
+        if(typeof data.removeStructureMemo === 'boolean') document.getElementById('removeStructureMemo').checked = data.removeStructureMemo;
         if(typeof data.output === 'string') document.getElementById('output').value = data.output;
         if(typeof data.dirtyStateText === 'string') document.getElementById('dirtyState').textContent = data.dirtyStateText;
         if(typeof data.dirtyStateClass === 'string') document.getElementById('dirtyState').className = data.dirtyStateClass;
@@ -328,7 +334,17 @@
       const editStrength = sanitizeStrength(v('editStrength'));
       const outputFormat = v('outputFormat');
       const returnScope = v('returnScope');
-      const sourceText = v('sourceText').trim() || 'ここに修正対象本文を貼ってください';
+      const sourceInput = v('sourceText').trim();
+      const removeStructureMemoChecked = checked('removeStructureMemo');
+      let sourceText = sourceInput || 'ここに修正対象本文を貼ってください';
+      if(removeStructureMemoChecked && sourceInput){
+        if(/^##\s*【構造メモ】/m.test(sourceInput)){
+          sourceText = sourceInput.replace(/^##\s*【構造メモ】[\s\S]*$/m, '').trimEnd();
+          if(!sourceText.trim()) sourceText = '構造メモなし';
+        } else {
+          sourceText = `${sourceInput}\n\n構造メモなし`;
+        }
+      }
       const keepRules = getKeepRules();
       const additions = modeAdditions[mode] || [];
 
