@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PromptPatch | 部分修正プロンプト生成ツール</title>
+  <style>
+    :root{
+      --bg:#0b1020;
+      --panel:#111933;
+      --panel-2:#10172d;
+      --text:#e8ecf8;
+      --muted:#9aa7c7;
+      --line:#223055;
+      --accent:#8b5cf6;
+      --accent-2:#a78bfa;
+      --good:#2fbf91;
+      --warn:#cc3d78;
+      --tap:44px;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0;background:
+      radial-gradient(1200px 500px at -10% -20%, rgba(139,92,246,.28), transparent 60%),
+      radial-gradient(1000px 380px at 120% 0%, rgba(167,139,250,.16), transparent 60%),
+      var(--bg);
+      color:var(--text);font-family:"Hiragino Kaku Gothic ProN","Yu Gothic UI","Meiryo",sans-serif}
+    header{position:sticky;top:0;z-index:30;background:rgba(11,16,32,.72);backdrop-filter: blur(8px);border-bottom:1px solid #1b284a}
+    .topbar{max-width:1280px;margin:0 auto;padding:10px 14px;display:flex;justify-content:space-between;align-items:center}
+    .topbarLeft{display:flex;align-items:center;gap:10px;min-width:0}
+    .brandMark{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:grid;place-items:center;font-weight:900}
+    .brandText{font-weight:800}
+    .topbarDivider{width:1px;height:18px;background:#2a3860}
+    .topbarTitle{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .topbarVersion{font-size:12px;color:var(--muted);border:1px solid #2a3860;border-radius:999px;padding:4px 8px}
+    main{max-width:1280px;margin:0 auto;padding:16px;display:grid;grid-template-columns:380px 1fr;gap:16px}
+    .card{background:linear-gradient(180deg,var(--panel),var(--panel-2));border:1px solid var(--line);border-radius:14px;box-shadow:0 12px 30px rgba(0,0,0,.24)}
+    .sticky{position:sticky;top:64px;align-self:start}
+    h2{margin:0;padding:12px 14px;border-bottom:1px solid var(--line);font-size:14px;letter-spacing:.02em}
+    .body{padding:12px 14px}
+    label{display:block;margin:10px 0 6px;font-size:12px;color:#c9d3ee}
+    input[type="text"],input[type="number"],select,textarea{
+      width:100%;background:#0f1831;color:#f8fbff;border:1px solid #2a3860;border-radius:10px;
+      padding:10px 12px;outline:none;transition:border-color .15s ease, box-shadow .15s ease;min-height:var(--tap)
+    }
+    textarea{resize:vertical;min-height:110px}
+    textarea.sourceText{min-height:280px}
+    textarea.outText{min-height:500px;font-family:ui-monospace,Consolas,monospace;line-height:1.55}
+    input:focus,select:focus,textarea:focus{border-color:#6d5ef8;box-shadow:0 0 0 3px rgba(109,94,248,.18)}
+    .row{display:grid;grid-template-columns:1fr 74px;gap:12px;align-items:center}
+    .val{font-variant-numeric:tabular-nums;background:#0f1831;border:1px solid #2a3860;border-radius:10px;padding:8px;text-align:center;color:#d8e0f7}
+    .scaleHint{font-size:12px;color:var(--muted);margin-top:6px}
+    .checks{display:grid;gap:8px;margin-top:8px}
+    .checks label{display:flex;gap:8px;align-items:flex-start;margin:0;color:#d4def5}
+    .checks input{margin-top:2px}
+    .btns{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+    button{
+      border:none;border-radius:12px;padding:10px 13px;color:#f8fafc;background:linear-gradient(135deg,#7c3aed,#8b5cf6);
+      cursor:pointer;font-weight:800;letter-spacing:.02em;min-height:var(--tap);min-width:112px;transition:transform .15s ease, filter .15s ease, opacity .15s ease
+    }
+    button:hover{filter:brightness(1.08)}
+    button.secondary{background:rgba(15,23,42,.78);border:1px solid rgba(148,163,184,.24);color:#e2e8f0}
+    button.warn{background:linear-gradient(135deg,#7c3aed,#8b5cf6)}
+    button:disabled{opacity:.46;cursor:not-allowed;pointer-events:none;filter:saturate(.65)}
+    button.clicked{transform:translateY(1px) scale(0.98);opacity:.9}
+    .preview{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+    .pill{border:1px solid #2a3860;background:#0f1730;padding:6px 10px;border-radius:999px;font-size:12px;color:#d8e3ff}
+    .ok{color:var(--good)}
+    .warnTxt{color:var(--warn)}
+    .toast{
+      position:fixed;left:50%;bottom:92px;transform:translateX(-50%);background:#111b38;border:1px solid #30406a;color:#f3f6ff;
+      padding:10px 14px;border-radius:10px;display:none;z-index:80;font-size:13px
+    }
+    .mobileActions{display:none}
+    @media (max-width:980px){
+      main{grid-template-columns:1fr}
+      .sticky{position:static}
+      textarea.sourceText{min-height:220px}
+      textarea.outText{min-height:300px}
+      .btns{display:grid;grid-template-columns:1fr 1fr}
+      .mobileActions{
+        position:fixed;left:12px;right:12px;bottom:12px;z-index:70;
+        display:grid;grid-template-columns:1fr 1fr;gap:8px;
+        padding:8px;border-radius:14px;border:1px solid #2a3860;background:rgba(8,12,24,.86);backdrop-filter: blur(8px)
+      }
+      .mobileActions .wide{grid-column:1/-1}
+      .mobileActions button{width:100%}
+      body{padding-bottom:96px}
+      .toast{bottom:122px}
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="topbar">
+      <div class="topbarLeft">
+        <div class="brandMark" aria-hidden="true">⬢</div>
+        <div class="brandText">PromptPatch</div>
+        <div class="topbarDivider" aria-hidden="true"></div>
+        <div class="topbarTitle">部分修正プロンプト生成ツール</div>
+      </div>
+      <div class="topbarVersion">v1.0</div>
+    </div>
+  </header>
+
+  <main>
+    <section class="card sticky">
+      <h2>操作パネル</h2>
+      <div class="body">
+        <label>修正モード</label>
+        <select id="mode">
+          <option>単一表現修正</option>
+          <option>複数箇所まとめ修正</option>
+          <option>温度感調整</option>
+          <option>キャラ整合修正</option>
+          <option>比喩精度修正</option>
+          <option>オチ・パンチライン補強</option>
+        </select>
+
+        <label>修正対象</label>
+        <textarea id="targetText" placeholder="「インフレで削り切る」&#10;「白馬の王子様」&#10;「この一文だけ少し強すぎる」など"></textarea>
+
+        <label>修正意図</label>
+        <textarea id="editIntent" placeholder="「もう少し簡単でやわらかい表現に」&#10;「弟子は男性想定なので自然な表現に」&#10;「意味は変えずに、師匠の軽口っぽくする」"></textarea>
+
+        <label>修正強度</label>
+        <div class="row">
+          <input id="editStrength" type="range" min="0" max="10" value="4" />
+          <div class="val" id="editStrengthVal">4</div>
+        </div>
+        <div class="scaleHint">0: 最小限 / 5: 自然に調整 / 10: かなり言い換え</div>
+
+        <label>保持ルール</label>
+        <div class="checks">
+          <label><input type="checkbox" id="keepFlow" checked /> 会話の流れは変えない</label>
+          <label><input type="checkbox" id="keepTone" checked /> キャラの口調は維持する</label>
+          <label><input type="checkbox" id="keepMetaphor" checked /> 比喩の核は変えない</label>
+          <label><input type="checkbox" id="keepMemo" checked /> 構造メモは触らない</label>
+          <label><input type="checkbox" id="banRewrite" checked /> 全文リライトは禁止</label>
+        </div>
+
+        <label>出力形式</label>
+        <select id="outputFormat">
+          <option>修正版のみ</option>
+          <option selected>修正前→修正後</option>
+          <option>差分説明つき</option>
+        </select>
+
+        <label>返却範囲</label>
+        <select id="returnScope">
+          <option selected>修正箇所だけ</option>
+          <option>修正箇所＋前後1〜2文</option>
+          <option>本文全体に反映</option>
+        </select>
+
+        <div class="btns">
+          <button class="good" id="buildBtn" type="button" onclick="buildPrompt()">プロンプト生成</button>
+          <button id="copyBtn" type="button" onclick="copyPrompt()" disabled>コピー</button>
+          <button class="secondary" id="downloadBtn" type="button" onclick="downloadPrompt()">.txt保存</button>
+          <button class="warn" id="clearBtn" type="button" onclick="clearSource()">本文クリア</button>
+        </div>
+        <div class="scaleHint" id="dirtyState">入力を編集中（未生成）</div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>本文入力 / 生成プロンプト</h2>
+      <div class="body">
+        <div class="preview">
+          <div class="pill"><b>モード</b><span id="modeState">単一表現修正</span></div>
+          <div class="pill"><b>強度</b><span id="strengthState">4/10</span></div>
+          <div class="pill"><b>返却範囲</b><span id="scopeState">修正箇所だけ</span></div>
+          <div class="pill"><b>コピー状態</b><span id="copyState" class="warnTxt">未コピー</span></div>
+        </div>
+
+        <label>ここに修正したい完成本文を貼る</label>
+        <textarea id="sourceText" class="sourceText" placeholder="生成済みの【師匠と弟子の会話】や記事本文を貼り付け"></textarea>
+
+        <label>生成プロンプト</label>
+        <textarea id="output" class="outText" readonly></textarea>
+      </div>
+    </section>
+  </main>
+
+  <div class="mobileActions">
+    <button class="good" id="mobileBuildBtn" onclick="buildPrompt()">生成</button>
+    <button id="mobileCopyBtn" onclick="copyPrompt()" disabled>コピー</button>
+    <button class="secondary wide" onclick="clearSource()">本文クリア</button>
+  </div>
+
+  <div id="toast" class="toast">コピーしたで</div>
+
+  <script>
+    const idsForDirty = [
+      'mode','targetText','editIntent','editStrength','outputFormat','returnScope','sourceText',
+      'keepFlow','keepTone','keepMetaphor','keepMemo','banRewrite'
+    ];
+
+    const modeAdditions = {
+      '単一表現修正': [
+        '- 指定された表現だけを自然に言い換える',
+        '- 周辺文脈との接続を必要最低限だけ整える'
+      ],
+      '複数箇所まとめ修正': [
+        '- 指摘された複数箇所をそれぞれ修正する',
+        '- 本文全体の流れは変えない'
+      ],
+      '温度感調整': [
+        '- 言葉の強さ、軽さ、やわらかさだけを調整する',
+        '- 論旨や構造は変えない'
+      ],
+      'キャラ整合修正': [
+        '- 師匠・弟子などの人物設定に合わない表現だけを直す',
+        '- 性別、年齢感、口調、理解速度のズレを整える'
+      ],
+      '比喩精度修正': [
+        '- 比喩の核は残す',
+        '- ズレた比喩、伝わりにくい比喩だけを自然に修正する'
+      ],
+      'オチ・パンチライン補強': [
+        '- 終盤の一言だけを少し強くする',
+        '- 本文全体を作り直さない'
+      ]
+    };
+
+    function v(id){
+      const el = document.getElementById(id);
+      return el ? el.value : '';
+    }
+
+    function checked(id){
+      const el = document.getElementById(id);
+      return !!(el && el.checked);
+    }
+
+    function sanitizeStrength(raw){
+      const n = Number.parseInt(raw, 10);
+      if(!Number.isFinite(n)) return 4;
+      return Math.min(10, Math.max(0, n));
+    }
+
+    function getKeepRules(){
+      const rules = [];
+      if(checked('keepFlow')) rules.push('会話の流れは変えない');
+      if(checked('keepTone')) rules.push('キャラの口調は維持する');
+      if(checked('keepMetaphor')) rules.push('比喩の核は変えない');
+      if(checked('keepMemo')) rules.push('構造メモは触らない');
+      if(checked('banRewrite')) rules.push('全文リライトは禁止');
+      return rules;
+    }
+
+    function markDirty(){
+      document.getElementById('dirtyState').textContent = '入力を編集中（未生成）';
+      document.getElementById('dirtyState').className = 'scaleHint warnTxt';
+      document.getElementById('copyState').textContent = '未コピー';
+      document.getElementById('copyState').className = 'warnTxt';
+      updateState();
+    }
+
+    function updateState(){
+      const strength = sanitizeStrength(v('editStrength'));
+      document.getElementById('editStrengthVal').textContent = String(strength);
+      document.getElementById('strengthState').textContent = `${strength}/10`;
+      document.getElementById('modeState').textContent = v('mode');
+      document.getElementById('scopeState').textContent = v('returnScope');
+    }
+
+    function clickFx(btn){
+      btn.classList.add('clicked');
+      setTimeout(() => btn.classList.remove('clicked'), 800);
+    }
+
+    function buildPrompt(){
+      const mode = v('mode');
+      const targetText = v('targetText').trim() || '（未指定）';
+      const editIntent = v('editIntent').trim() || '（未指定）';
+      const editStrength = sanitizeStrength(v('editStrength'));
+      const outputFormat = v('outputFormat');
+      const returnScope = v('returnScope');
+      const sourceText = v('sourceText').trim() || 'ここに修正対象本文を貼ってください';
+      const keepRules = getKeepRules();
+      const additions = modeAdditions[mode] || [];
+
+      document.getElementById('editStrength').value = String(editStrength);
+      updateState();
+
+      const lines = [];
+      lines.push('---');
+      lines.push('あなたは文章の部分修正を行う編集者です。');
+      lines.push('');
+      lines.push('目的：');
+      lines.push('以下の本文について、指定された箇所だけを修正してください。');
+      lines.push('全文を書き直すのではなく、良い部分は残し、ズレている表現だけを自然に直してください。');
+      lines.push('');
+      lines.push('【修正モード】');
+      lines.push(mode);
+      lines.push('');
+      lines.push('【修正対象】');
+      lines.push(targetText);
+      lines.push('');
+      lines.push('【修正意図】');
+      lines.push(editIntent);
+      lines.push('');
+      lines.push('【修正強度】');
+      lines.push(`${editStrength}/10`);
+      lines.push('0: 最小限の修正');
+      lines.push('5: 自然な言い換え');
+      lines.push('10: 大きめの言い換え');
+      lines.push('');
+      lines.push('【保持ルール】');
+      if(keepRules.length){
+        keepRules.forEach((rule) => lines.push(`- ${rule}`));
+      } else {
+        lines.push('- （保持ルール指定なし）');
+      }
+      lines.push('');
+      lines.push('【出力ルール】');
+      lines.push('- 指定箇所とその周辺だけを修正する');
+      lines.push('- 意味の核は変えない');
+      lines.push('- 文脈に自然になじませる');
+      lines.push('- 修正対象が本文内に複数ある場合は、必要な箇所だけ修正する');
+      lines.push('- 修正の影響範囲を広げすぎない');
+      lines.push('- 余計な解説はしない');
+      lines.push('');
+      lines.push('【返却範囲】');
+      lines.push(returnScope);
+      if(returnScope === '修正箇所だけ'){
+        lines.push('- 本文全体を再掲しない');
+        lines.push('- 修正後の該当表現、または該当文だけを返す');
+        lines.push('- 周辺文脈は原則として返さない');
+      } else if(returnScope === '修正箇所＋前後1〜2文'){
+        lines.push('- 本文全体を再掲しない');
+        lines.push('- 修正箇所が自然につながるように、必要な前後1〜2文だけ含める');
+        lines.push('- 影響範囲を広げすぎない');
+      } else {
+        lines.push('- 修正済みの本文全体を返してよい');
+        lines.push('- ただし、指定箇所以外は原則変更しない');
+        lines.push('- 全文リライトではなく、部分修正を本文全体に反映したものとして出力する');
+      }
+      lines.push('');
+      lines.push('【出力形式】');
+      lines.push(outputFormat);
+      lines.push('');
+      lines.push('【モード別追加指示】');
+      additions.forEach((line) => lines.push(line));
+      lines.push('');
+      lines.push('【本文】');
+      lines.push(sourceText);
+      lines.push('---');
+
+      document.getElementById('output').value = lines.join('\n');
+      document.getElementById('dirtyState').textContent = '生成済み（この内容をコピーして使えます）';
+      document.getElementById('dirtyState').className = 'scaleHint ok';
+      document.getElementById('copyState').textContent = '未コピー';
+      document.getElementById('copyState').className = 'warnTxt';
+      document.getElementById('copyBtn').disabled = false;
+      document.getElementById('mobileCopyBtn').disabled = false;
+
+      const btn = document.getElementById('buildBtn');
+      const mbtn = document.getElementById('mobileBuildBtn');
+      const old = btn.textContent;
+      const oldM = mbtn.textContent;
+      btn.textContent = '生成OK';
+      mbtn.textContent = '生成OK';
+      clickFx(btn);
+      clickFx(mbtn);
+      setTimeout(() => {
+        btn.textContent = old;
+        mbtn.textContent = oldM;
+      }, 800);
+    }
+
+    async function copyPrompt(){
+      if(!v('output').trim()) buildPrompt();
+      await navigator.clipboard.writeText(v('output'));
+      document.getElementById('copyState').textContent = 'コピー済み';
+      document.getElementById('copyState').className = 'ok';
+      const toast = document.getElementById('toast');
+      toast.style.display = 'block';
+      setTimeout(() => toast.style.display = 'none', 1400);
+
+      const btn = document.getElementById('copyBtn');
+      const mbtn = document.getElementById('mobileCopyBtn');
+      const old = btn.textContent;
+      const oldM = mbtn.textContent;
+      btn.textContent = 'コピーOK';
+      mbtn.textContent = 'コピーOK';
+      clickFx(btn);
+      clickFx(mbtn);
+      setTimeout(() => {
+        btn.textContent = old;
+        mbtn.textContent = oldM;
+      }, 800);
+    }
+
+    function clearSource(){
+      document.getElementById('sourceText').value = '';
+      markDirty();
+      const btn = document.getElementById('clearBtn');
+      clickFx(btn);
+    }
+
+    function downloadPrompt(){
+      if(!v('output').trim()) buildPrompt();
+      const blob = new Blob([v('output')], {type:'text/plain;charset=utf-8'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'partial_patch_prompt.txt';
+      a.click();
+      URL.revokeObjectURL(a.href);
+      clickFx(document.getElementById('downloadBtn'));
+    }
+
+    function bindInputs(){
+      idsForDirty.forEach((id) => {
+        const el = document.getElementById(id);
+        el.addEventListener('input', markDirty);
+        el.addEventListener('change', markDirty);
+      });
+    }
+
+    bindInputs();
+    updateState();
+    document.getElementById('output').value = '';
+    document.getElementById('copyBtn').disabled = true;
+    document.getElementById('mobileCopyBtn').disabled = true;
+  </script>
+</body>
+</html>
