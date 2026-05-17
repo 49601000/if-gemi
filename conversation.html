@@ -359,9 +359,11 @@ const basePrompt = `あなたは、元ネタ本文の論点を中心に、比喩
 - 読者が弟子と一緒に気づいていく流れを作る
 - 比喩を舞台設定へ変換せず、説明補助として使う`;
 
-const mentorSpeechDsl = `【師匠発話DSL（口調のみ適用）】
+const mentorSpeechDsl = `【師匠・弟子 発話DSL（口調と代名詞ルール）】
 - 変更対象は師匠の文体のみ。構造・論理・比喩・Source/Target対応・パンチライン生成は変更しない
-- 弟子キャラの文体は現状維持
+- 弟子キャラの基本文体は現状維持。ただし、弟子の一人称は必ず「僕」に固定する
+- 弟子が師匠を呼ぶときは必ず「師匠」を使う
+- 指定外の代名詞（あなた・君・きみ・俺・私・自分など）への自動置換は禁止
 
 worldview:
 - 世界は理不尽
@@ -377,12 +379,36 @@ reasoningStyle:
 
 speechProfile:
 firstPerson:
-- ワイ
-- ワシ（たまに）
+- default: ワイ
+- occasional:
+  - ワシ
 
 secondPerson:
-- お前
-- 弟子
+- allowed:
+  - お前
+  - 弟子
+- forbidden:
+  - あなた
+  - 君
+  - きみ
+
+discipleSpeechProfile:
+firstPerson:
+- allowed:
+  - 僕
+- forbidden:
+  - 俺
+  - 私
+  - 自分
+  - ワイ
+
+secondPerson:
+- allowed:
+  - 師匠
+- forbidden:
+  - あなた
+  - 君
+  - きみ
 
 sentenceRhythm:
 - 短文多め
@@ -654,6 +680,14 @@ function buildPrompt(){
   lines.push('【師匠キャラ】');
   lines.push(mentor);
   lines.push('');
+  lines.push('【師匠口調の厳守ルール】');
+  lines.push('師匠の一人称は基本「ワイ」、たまに「ワシ」を使用してください。');
+  lines.push('師匠の二人称は「お前」または「弟子」のみ使用してください。');
+  lines.push('「あなた」「君」「きみ」など標準的な二人称は禁止です。');
+  lines.push('弟子の一人称は必ず「僕」を使用してください（「俺」「私」「自分」「ワイ」は禁止）。');
+  lines.push('弟子が師匠を呼ぶ二人称は必ず「師匠」を使用してください（「あなた」「君」「きみ」は禁止）。');
+  lines.push('キャラクターの口調ルールは厳守してください。語彙の自動補正や一般的な敬語表現への置換は禁止です。');
+  lines.push('');
   lines.push('【弟子キャラ】');
   lines.push(student);
   lines.push('');
@@ -677,10 +711,11 @@ function buildPrompt(){
   lines.push('【ジェミ師匠のひとこと設定】');
   if(includeJemiHitokoto){
     lines.push('【師匠と弟子の会話】の後、【構造メモ】の前に、【ジェミ師匠のひとこと】を入れてください。');
-    lines.push(`個数は${jemiHitokotoCount}個を目安にしてください。`);
-    lines.push('各項目は短く、会話劇の要点・教訓・読者が持ち帰るべき視点を、ジェミ師匠らしい軽い口調でまとめてください。');
-    lines.push('本文の焼き直しではなく、余韻と理解補助として機能させてください。');
-    lines.push('【ジェミ師匠のひとこと】は構造メモより読者向けのやわらかいまとめにし、Source Domain / Target Domain / 不条理の核 / パンチラインとは役割を分けること。');
+    lines.push(`【ジェミ師匠のひとこと】は原則${jemiHitokotoCount}個出力してください。`);
+    lines.push('その回で扱った項目名や重要ワードを1つ以上拾い、自然な短文コメントに組み込んでください。');
+    lines.push('単なる要約や本文の焼き直しは禁止。各コメントは教訓・皮肉・ツッコミのいずれか1つを軸に、ジェミ師匠らしい軽い口調でまとめてください。');
+    lines.push('読者の理解補助と余韻づくりを目的とし、「なるほどｗ」と思えるひとことにしてください。');
+    lines.push('【ジェミ師匠のひとこと】は読者向けのやわらかい補足とし、【構造メモ】（Source Domain / Target Domain / 不条理の核 / パンチライン）とは役割を明確に分けてください。');
   } else {
     lines.push('【ジェミ師匠のひとこと】は出力しない。');
   }
