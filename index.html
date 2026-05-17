@@ -143,7 +143,7 @@
   <main class="wrap">
     <section class="hero">
       <h1>PromptBuilder Launcher</h1>
-      <p>もしジェミ 生成用のランチャーです。以下の4ページから、比喩生成 → シナリオ構造化 → 師匠僕会話化 → 部分修正の順で使えます。</p>
+      <p>もしジェミ 生成用のランチャーです。以下の5ページから、比喩生成 → シナリオ構造化 → 師匠僕会話化 → レビュー抽出 → 部分修正の順で使えます。</p>
       <div class="heroActions">
         <button class="btn secondary" type="button" onclick="clearMoshiJemiStorage()">保存データをクリア</button>
       </div>
@@ -174,13 +174,20 @@
 
       <article class="card">
         <span class="tag">Step 4</span>
+        <h2>review.html</h2>
+        <p>会話劇をレビューして、後続の部分修正に使う「修正対象」と「修正意図」を抽出するページです。</p>
+        <a class="btn" href="./review.html" target="_blank" rel="noopener noreferrer">開く</a>
+      </article>
+
+      <article class="card">
+        <span class="tag">Step 5</span>
         <h2>proofreading.html</h2>
         <p>生成済み本文の惜しい箇所だけを直すための、部分修正プロンプト生成ページです。</p>
         <a class="btn" href="./proofreading.html" target="_blank" rel="noopener noreferrer">開く</a>
       </article>
     </section>
 
-    <p class="footer">Files: metaphor.html / scenario.html / conversation.html / proofreading.html</p>
+    <p class="footer">Files: metaphor.html / scenario.html / conversation.html / review.html / proofreading.html</p>
   </main>
   <script>
     const STORAGE_PREFIX = 'moshiJemi_';

@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ReviewPrompt | レビュー抽出プロンプト生成ツール</title>
+  <style>
+    :root{
+      --bg:#0b1020;
+      --panel:#111933;
+      --panel-2:#10172d;
+      --text:#e8ecf8;
+      --muted:#9aa7c7;
+      --line:#223055;
+      --accent:#8b5cf6;
+      --accent-2:#a78bfa;
+      --good:#2fbf91;
+      --warn:#cc3d78;
+      --tap:44px;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0;background:
+      radial-gradient(1200px 500px at -10% -20%, rgba(139,92,246,.28), transparent 60%),
+      radial-gradient(1000px 380px at 120% 0%, rgba(167,139,250,.16), transparent 60%),
+      var(--bg);
+      color:var(--text);font-family:"Hiragino Kaku Gothic ProN","Yu Gothic UI","Meiryo",sans-serif}
+    header{position:sticky;top:0;z-index:30;background:rgba(11,16,32,.72);backdrop-filter:blur(8px);border-bottom:1px solid #1b284a}
+    .topbar{max-width:1280px;margin:0 auto;padding:10px 14px;display:flex;justify-content:space-between;align-items:center}
+    .topbarLeft{display:flex;align-items:center;gap:10px;min-width:0}
+    .brandMark{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:grid;place-items:center;font-weight:900}
+    .brandText{font-weight:800}
+    .topbarDivider{width:1px;height:18px;background:#2a3860}
+    .topbarTitle{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .topbarVersion{font-size:12px;color:var(--muted);border:1px solid #2a3860;border-radius:999px;padding:4px 8px}
+    main{max-width:1280px;margin:0 auto;padding:16px;display:grid;grid-template-columns:380px 1fr;gap:16px}
+    .card{background:linear-gradient(180deg,var(--panel),var(--panel-2));border:1px solid var(--line);border-radius:14px;box-shadow:0 12px 30px rgba(0,0,0,.24)}
+    .sticky{position:sticky;top:64px;align-self:start}
+    h2{margin:0;padding:12px 14px;border-bottom:1px solid var(--line);font-size:14px;letter-spacing:.02em}
+    .body{padding:12px 14px}
+    label{display:block;margin:10px 0 6px;font-size:12px;color:#c9d3ee}
+    input[type="number"],select,textarea{
+      width:100%;background:#0f1831;color:#f8fbff;border:1px solid #2a3860;border-radius:10px;
+      padding:10px 12px;outline:none;transition:border-color .15s ease, box-shadow .15s ease;min-height:var(--tap)
+    }
+    textarea{resize:vertical;min-height:110px}
+    textarea.sourceText{min-height:300px}
+    textarea.outText{min-height:520px;font-family:ui-monospace,Consolas,monospace;line-height:1.55}
+    input:focus,select:focus,textarea:focus{border-color:#6d5ef8;box-shadow:0 0 0 3px rgba(109,94,248,.18)}
+    .row{display:grid;grid-template-columns:1fr 74px;gap:12px;align-items:center}
+    .val{font-variant-numeric:tabular-nums;background:#0f1831;border:1px solid #2a3860;border-radius:10px;padding:8px;text-align:center;color:#d8e0f7}
+    .scaleHint{font-size:12px;color:var(--muted);margin-top:6px}
+    .checks{display:grid;gap:8px;margin-top:8px}
+    .checks label{display:flex;gap:8px;align-items:flex-start;margin:0;color:#d4def5}
+    .checks input{margin-top:2px}
+    .btns{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+    button{
+      border:none;border-radius:12px;padding:10px 13px;color:#f8fafc;background:linear-gradient(135deg,#7c3aed,#8b5cf6);
+      cursor:pointer;font-weight:800;letter-spacing:.02em;min-height:var(--tap);min-width:112px;transition:transform .15s ease, filter .15s ease, opacity .15s ease
+    }
+    button:hover{filter:brightness(1.08)}
+    button.secondary{background:rgba(15,23,42,.78);border:1px solid rgba(148,163,184,.24);color:#e2e8f0}
+    button.warn{background:linear-gradient(135deg,#7c3aed,#8b5cf6)}
+    button:disabled{opacity:.46;cursor:not-allowed;pointer-events:none;filter:saturate(.65)}
+    button.clicked{transform:translateY(1px) scale(0.98);opacity:.9}
+    .preview{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+    .pill{border:1px solid #2a3860;background:#0f1730;padding:6px 10px;border-radius:999px;font-size:12px;color:#d8e3ff}
+    .ok{color:var(--good)}
+    .warnTxt{color:var(--warn)}
+    .toast{
+      position:fixed;left:50%;bottom:92px;transform:translateX(-50%);background:#111b38;border:1px solid #30406a;color:#f3f6ff;
+      padding:10px 14px;border-radius:10px;display:none;z-index:80;font-size:13px
+    }
+    .mobileActions{display:none}
+    @media (max-width:980px){
+      main{grid-template-columns:1fr}
+      .sticky{position:static}
+      textarea.sourceText{min-height:220px}
+      textarea.outText{min-height:300px}
+      .btns{display:grid;grid-template-columns:1fr 1fr}
+      .mobileActions{
+        position:fixed;left:12px;right:12px;bottom:12px;z-index:70;
+        display:grid;grid-template-columns:1fr 1fr;gap:8px;
+        padding:8px;border-radius:14px;border:1px solid #2a3860;background:rgba(8,12,24,.86);backdrop-filter:blur(8px)
+      }
+      .mobileActions .wide{grid-column:1/-1}
+      .mobileActions button{width:100%}
+      body{padding-bottom:96px}
+      .toast{bottom:122px}
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="topbar">
+      <div class="topbarLeft">
+        <div class="brandMark" aria-hidden="true">⬢</div>
+        <div class="brandText">ReviewPrompt</div>
+        <div class="topbarDivider" aria-hidden="true"></div>
+        <div class="topbarTitle">レビュー抽出プロンプト生成ツール</div>
+      </div>
+      <div class="topbarVersion">v1.0</div>
+    </div>
+  </header>
+
+  <main>
+    <section class="card sticky">
+      <h2>操作パネル</h2>
+      <div class="body">
+        <label>レビュー観点</label>
+        <select id="reviewFocus">
+          <option>総合レビュー</option>
+          <option>キャラ整合レビュー</option>
+          <option>比喩精度レビュー</option>
+          <option>会話テンポレビュー</option>
+          <option>説明臭さチェック</option>
+          <option>パンチライン強化チェック</option>
+          <option>読者理解チェック</option>
+        </select>
+
+        <label>レビュー厳しさ</label>
+        <div class="row">
+          <input id="reviewStrictness" type="range" min="0" max="10" value="5" />
+          <div class="val" id="reviewStrictnessVal">5</div>
+        </div>
+        <div class="scaleHint">0: 軽く見る / 5: 普通に見る / 10: 厳しめに見る</div>
+
+        <label>出力件数目安</label>
+        <select id="outputCount">
+          <option>3</option>
+          <option selected>5</option>
+          <option>8</option>
+          <option>10</option>
+        </select>
+
+        <div class="checks">
+          <label><input type="checkbox" id="includeStructureMemo" checked /> 構造メモをレビュー対象に含める</label>
+        </div>
+        <div class="scaleHint">OFF時は【構造メモ】セクションを除いて本文中心にレビュー</div>
+
+        <div class="btns">
+          <button id="buildBtn" type="button" onclick="buildPrompt()">プロンプト生成</button>
+          <button id="copyBtn" type="button" onclick="copyPrompt()" disabled>コピー</button>
+          <button class="warn" id="clearBtn" type="button" onclick="clearSource()">本文クリア</button>
+        </div>
+        <div class="scaleHint" id="dirtyState">入力を編集中（未生成）</div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>本文入力 / 生成プロンプト</h2>
+      <div class="body">
+        <div class="preview">
+          <div class="pill"><b>観点</b><span id="focusState">総合レビュー</span></div>
+          <div class="pill"><b>厳しさ</b><span id="strictnessState">5/10</span></div>
+          <div class="pill"><b>件数目安</b><span id="countState">5件</span></div>
+          <div class="pill"><b>コピー状態</b><span id="copyState" class="warnTxt">未コピー</span></div>
+        </div>
+
+        <label>レビュー対象本文（会話劇）</label>
+        <textarea id="sourceText" class="sourceText" placeholder="conversation.html で生成した会話劇を貼り付け&#10;【師匠と弟子の会話】/【ジェミ師匠のひとこと】/【構造メモ】を含んでもOK"></textarea>
+
+        <label>生成プロンプト</label>
+        <textarea id="output" class="outText" readonly></textarea>
+      </div>
+    </section>
+  </main>
+
+  <div class="mobileActions">
+    <button id="mobileBuildBtn" onclick="buildPrompt()">生成</button>
+    <button id="mobileCopyBtn" onclick="copyPrompt()" disabled>コピー</button>
+    <button class="secondary wide" onclick="clearSource()">本文クリア</button>
+  </div>
+
+  <div id="toast" class="toast">コピーしたで</div>
+
+  <script>
+    const STORAGE_KEY = 'moshiJemi_review_state';
+    const idsForDirty = [
+      'reviewFocus',
+      'reviewStrictness',
+      'outputCount',
+      'includeStructureMemo',
+      'sourceText'
+    ];
+
+    function v(id){
+      const el = document.getElementById(id);
+      return el ? el.value : '';
+    }
+
+    function checked(id){
+      const el = document.getElementById(id);
+      return !!(el && el.checked);
+    }
+
+    function sanitizeStrictness(raw){
+      const n = Number.parseInt(raw, 10);
+      if(!Number.isFinite(n)) return 5;
+      return Math.min(10, Math.max(0, n));
+    }
+
+    function sanitizeCount(raw){
+      const n = Number.parseInt(raw, 10);
+      if(!Number.isFinite(n)) return 5;
+      return Math.max(1, n);
+    }
+
+    function strictnessNote(level){
+      if(level <= 2) return '軽く見る（粗いズレだけ拾う）';
+      if(level <= 6) return '普通に見る（明確な改善余地を優先）';
+      return '厳しめに見る（甘さやノイズも拾う）';
+    }
+
+    function updateState(){
+      const strictness = sanitizeStrictness(v('reviewStrictness'));
+      const count = sanitizeCount(v('outputCount'));
+      document.getElementById('reviewStrictness').value = String(strictness);
+      document.getElementById('reviewStrictnessVal').textContent = String(strictness);
+      document.getElementById('focusState').textContent = v('reviewFocus');
+      document.getElementById('strictnessState').textContent = `${strictness}/10`;
+      document.getElementById('countState').textContent = `${count}件`;
+    }
+
+    function savePageState(){
+      const payload = {
+        sourceText: v('sourceText'),
+        reviewFocus: v('reviewFocus'),
+        reviewStrictness: v('reviewStrictness'),
+        outputCount: v('outputCount'),
+        includeStructureMemo: checked('includeStructureMemo'),
+        output: v('output'),
+        dirtyStateText: document.getElementById('dirtyState').textContent,
+        dirtyStateClass: document.getElementById('dirtyState').className,
+        copyStateText: document.getElementById('copyState').textContent,
+        copyStateClass: document.getElementById('copyState').className
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    }
+
+    function restorePageState(){
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(!raw) return;
+      try{
+        const data = JSON.parse(raw);
+        if(typeof data.sourceText === 'string') document.getElementById('sourceText').value = data.sourceText;
+        if(typeof data.reviewFocus === 'string') document.getElementById('reviewFocus').value = data.reviewFocus;
+        if(typeof data.reviewStrictness === 'string' || typeof data.reviewStrictness === 'number') document.getElementById('reviewStrictness').value = String(data.reviewStrictness);
+        if(typeof data.outputCount === 'string' || typeof data.outputCount === 'number') document.getElementById('outputCount').value = String(data.outputCount);
+        if(typeof data.includeStructureMemo === 'boolean') document.getElementById('includeStructureMemo').checked = data.includeStructureMemo;
+        if(typeof data.output === 'string') document.getElementById('output').value = data.output;
+        if(typeof data.dirtyStateText === 'string') document.getElementById('dirtyState').textContent = data.dirtyStateText;
+        if(typeof data.dirtyStateClass === 'string') document.getElementById('dirtyState').className = data.dirtyStateClass;
+        if(typeof data.copyStateText === 'string') document.getElementById('copyState').textContent = data.copyStateText;
+        if(typeof data.copyStateClass === 'string') document.getElementById('copyState').className = data.copyStateClass;
+      } catch (e){
+        console.warn('review state restore failed', e);
+      }
+    }
+
+    function markDirty(){
+      document.getElementById('dirtyState').textContent = '入力を編集中（未生成）';
+      document.getElementById('dirtyState').className = 'scaleHint warnTxt';
+      document.getElementById('copyState').textContent = '未コピー';
+      document.getElementById('copyState').className = 'warnTxt';
+      updateState();
+      savePageState();
+    }
+
+    function clickFx(btn){
+      btn.classList.add('clicked');
+      setTimeout(() => btn.classList.remove('clicked'), 800);
+    }
+
+    function buildPrompt(){
+      const focus = v('reviewFocus');
+      const strictness = sanitizeStrictness(v('reviewStrictness'));
+      const count = sanitizeCount(v('outputCount'));
+      const includeStructureMemo = checked('includeStructureMemo');
+      const sourceInput = v('sourceText').trim();
+
+      let reviewText = sourceInput || 'ここにレビュー対象本文を貼ってください';
+      if(!includeStructureMemo && sourceInput){
+        reviewText = sourceInput.replace(/^##\s*【構造メモ】[\s\S]*$/m, '').trim();
+      }
+
+      const lines = [];
+      lines.push('---');
+      lines.push('あなたは会話劇の編集レビュー担当です。');
+      lines.push('以下の本文を読み、本文全体を書き直さず、修正すべき箇所だけを抽出してください。');
+      lines.push('');
+      lines.push('【レビュー設定】');
+      lines.push(`- レビュー観点：${focus}`);
+      lines.push(`- レビュー厳しさ：${strictness}/10（${strictnessNote(strictness)}）`);
+      lines.push(`- 出力件数目安：${count}件（ただし直すべき箇所が少ない場合は無理に埋めない）`);
+      lines.push(`- 構造メモの扱い：${includeStructureMemo ? '本文とあわせてレビュー対象に含める' : '構造メモは除外し、本文レビューを優先する'}`);
+      lines.push('');
+      lines.push('【あなたへの指示】');
+      lines.push('- 修正対象と修正意図を分けて出力すること');
+      lines.push('- 修正対象は、本文内の具体的な表現・文・会話の流れ・比喩・ツッコミなどを箇条書きにすること');
+      lines.push('- 修正対象には、できるだけ本文中の原文を引用すること');
+      lines.push('- 修正意図は、各項目について「何をどう直すか」を短く具体的に書くこと');
+      lines.push('- 修正対象と修正意図の件数・順番・番号を必ず1対1で対応させること');
+      lines.push('- その場で本文を修正しないこと');
+      lines.push('- 全文リライト案を出さないこと');
+      lines.push('- PromptPatch / proofreading.html に貼りやすい粒度で書くこと');
+      lines.push('- 「全体的に良くする」など曖昧な指摘は禁止');
+      lines.push('- 良い部分は無理に修正対象にしないこと');
+      lines.push('- 会話劇の個性やジェミ師匠の口調を潰す提案は禁止');
+      lines.push('- 方針は「あくまで内角を外れた表現を内角ギリギリに戻す」レビューに限定すること');
+      lines.push('');
+      lines.push('【出力フォーマット（厳守）】');
+      lines.push('【修正対象】');
+      lines.push('- 1.「該当表現や該当箇所」');
+      lines.push('- 2.「該当表現や該当箇所」');
+      lines.push('');
+      lines.push('【修正意図】');
+      lines.push('- 1. 上記1つ目について、どう直したいか');
+      lines.push('- 2. 上記2つ目について、どう直したいか');
+      lines.push('');
+      lines.push('【レビュー対象本文】');
+      lines.push(reviewText || 'ここにレビュー対象本文を貼ってください');
+      lines.push('---');
+
+      document.getElementById('reviewStrictness').value = String(strictness);
+      updateState();
+      document.getElementById('output').value = lines.join('\n');
+      document.getElementById('dirtyState').textContent = '生成済み（この内容をコピーして使えます）';
+      document.getElementById('dirtyState').className = 'scaleHint ok';
+      document.getElementById('copyState').textContent = '未コピー';
+      document.getElementById('copyState').className = 'warnTxt';
+      document.getElementById('copyBtn').disabled = false;
+      document.getElementById('mobileCopyBtn').disabled = false;
+
+      const btn = document.getElementById('buildBtn');
+      const mbtn = document.getElementById('mobileBuildBtn');
+      const old = btn.textContent;
+      const oldM = mbtn.textContent;
+      btn.textContent = '生成OK';
+      mbtn.textContent = '生成OK';
+      clickFx(btn);
+      clickFx(mbtn);
+      setTimeout(() => {
+        btn.textContent = old;
+        mbtn.textContent = oldM;
+      }, 800);
+      savePageState();
+    }
+
+    async function copyPrompt(){
+      if(!v('output').trim()) buildPrompt();
+      await navigator.clipboard.writeText(v('output'));
+      document.getElementById('copyState').textContent = 'コピー済み';
+      document.getElementById('copyState').className = 'ok';
+      const toast = document.getElementById('toast');
+      toast.style.display = 'block';
+      setTimeout(() => toast.style.display = 'none', 1400);
+
+      const btn = document.getElementById('copyBtn');
+      const mbtn = document.getElementById('mobileCopyBtn');
+      const old = btn.textContent;
+      const oldM = mbtn.textContent;
+      btn.textContent = 'コピーOK';
+      mbtn.textContent = 'コピーOK';
+      clickFx(btn);
+      clickFx(mbtn);
+      setTimeout(() => {
+        btn.textContent = old;
+        mbtn.textContent = oldM;
+      }, 800);
+      savePageState();
+    }
+
+    function clearSource(){
+      document.getElementById('sourceText').value = '';
+      markDirty();
+      clickFx(document.getElementById('clearBtn'));
+      savePageState();
+    }
+
+    function bindInputs(){
+      idsForDirty.forEach((id) => {
+        const el = document.getElementById(id);
+        el.addEventListener('input', markDirty);
+        el.addEventListener('change', markDirty);
+      });
+    }
+
+    bindInputs();
+    restorePageState();
+    updateState();
+    const hasOutput = !!v('output').trim();
+    document.getElementById('copyBtn').disabled = !hasOutput;
+    document.getElementById('mobileCopyBtn').disabled = !hasOutput;
+    savePageState();
+  </script>
+</body>
+</html>
