@@ -501,6 +501,51 @@ const dsl = {
   }
 };
 
+const scaleLabels = {
+  structureDepth: [
+    '直感重視。構造説明は最小限にし、読者の感覚で伝える',
+    '軽め。要所だけ論点を分解する',
+    '標準。必要に応じてSource/Target対応を補助的に示す',
+    '高め。論点の分解と対応関係を明確にする',
+    '最大。構造対応と論点分解を明示して組み立てる'
+  ],
+  dialogueDrama: [
+    '解説寄り。会話は説明の受け皿として使う',
+    '控えめ。自然な質疑応答を中心にする',
+    '標準。師匠と弟子の掛け合いを自然に入れる',
+    '高め。驚き・ツッコミ・感情の動きを強める',
+    '最大。芝居がかった展開や間を使い、読み物としての会話劇を強める'
+  ],
+  studentDelay: [
+    '即理解。弟子は早めに納得する',
+    '軽め。少し疑問を挟む程度',
+    '標準。途中で誤解しながら段階的に理解する',
+    '高め。何度かズレた反応をして、読者代理として引っ張る',
+    '最大。終盤まで腑に落ちず、最後に理解する'
+  ],
+  teacherDensity: [
+    '短く刺す。師匠は説明をかなり削る',
+    '軽め。短い補足で導く',
+    '標準。必要な説明は入れるが長文化しない',
+    '高め。理由や背景をやや丁寧に説明する',
+    '最大。教材寄りに、論点をかなり丁寧に教える'
+  ],
+  metaphorRetention: [
+    '自然使用。比喩は一度だけ軽く使う',
+    '控えめ。要所で短く使う',
+    '標準。比喩を理解補助として複数回使う',
+    '高め。元比喩の要素をかなり残して説明する',
+    '最大。元比喩の構造・感情・語彙を強く保持する'
+  ],
+  punchlineStrength: [
+    '穏やか。余韻重視で締める',
+    '軽め。軽いツッコミで終える',
+    '標準。印象に残る一言で締める',
+    '高め。読者に刺さる強めの反転や皮肉を入れる',
+    '最大。最後に強い一撃のパンチラインで落とす'
+  ]
+};
+
 const storageKey = 'moshiJemi_conversation_ranges';
 const conversationStateKey = 'moshiJemi_conversation_state';
 const state = {
@@ -510,6 +555,7 @@ const state = {
   hasStoredParams: false,
   restoredFromState: false
 };
+let saveConversationTimer = null;
 
 function v(id){
   const el = document.getElementById(id);
@@ -561,7 +607,7 @@ function bindRange(id){
     out.textContent = el.value;
     updateState();
   };
-  el.addEventListener('input', () => { sync(); markParamsDirty(); saveConversationState(); });
+  el.addEventListener('input', () => { sync(); markParamsDirty(); scheduleSaveConversationState(); });
   sync();
 }
 
@@ -587,7 +633,11 @@ function applyPreset(){
   });
   updateState();
   markParamsDirty();
-  buildPrompt();
+  if(v('source').trim()){
+    buildPrompt();
+  } else {
+    scheduleSaveConversationState();
+  }
 }
 
 function saveSettings(){
@@ -659,6 +709,14 @@ function saveConversationState(){
   localStorage.setItem(conversationStateKey, JSON.stringify(collectConversationState()));
 }
 
+function scheduleSaveConversationState(delay = 220){
+  if(saveConversationTimer) clearTimeout(saveConversationTimer);
+  saveConversationTimer = setTimeout(() => {
+    saveConversationState();
+    saveConversationTimer = null;
+  }, delay);
+}
+
 function restoreConversationState(){
   const raw = localStorage.getItem(conversationStateKey);
   if (!raw) return false;
@@ -688,6 +746,17 @@ function getPhilosophyTimingLabel(value){
     none: '反映しない'
   };
   return labels[value] || labels.twist;
+}
+
+function getScaleLabel(id, value){
+  const labels = scaleLabels[id];
+  if(!labels) return '';
+  const n = Number(value);
+  if(n <= 1) return labels[0];
+  if(n <= 3) return labels[1];
+  if(n <= 6) return labels[2];
+  if(n <= 8) return labels[3];
+  return labels[4];
 }
 
 function sanitizeTargetLength(rawValue){
@@ -767,12 +836,12 @@ function buildPrompt(){
   lines.push(purpose);
   lines.push('');
   lines.push('【出力制御】');
-  lines.push(`- 構造分解度：${structureDepth}/10`);
-  lines.push(`- 会話劇度：${dialogueDrama}/10`);
-  lines.push(`- 弟子の理解遅延度：${studentDelay}/10`);
-  lines.push(`- 師匠の説明圧：${teacherDensity}/10`);
-  lines.push(`- 比喩保持度：${metaphorRetention}/10`);
-  lines.push(`- パンチライン強度：${punchlineStrength}/10`);
+  lines.push(`- 構造分解度：${structureDepth}/10（${getScaleLabel('structureDepth', structureDepth)}）`);
+  lines.push(`- 会話劇度：${dialogueDrama}/10（${getScaleLabel('dialogueDrama', dialogueDrama)}）`);
+  lines.push(`- 弟子の理解遅延度：${studentDelay}/10（${getScaleLabel('studentDelay', studentDelay)}）`);
+  lines.push(`- 師匠の説明圧：${teacherDensity}/10（${getScaleLabel('teacherDensity', teacherDensity)}）`);
+  lines.push(`- 比喩保持度：${metaphorRetention}/10（${getScaleLabel('metaphorRetention', metaphorRetention)}）`);
+  lines.push(`- パンチライン強度：${punchlineStrength}/10（${getScaleLabel('punchlineStrength', punchlineStrength)}）`);
   lines.push(`- 文字数目安：約${targetLength}文字`);
   lines.push(`- ジェミ師匠のひとこと：${includeJemiHitokoto ? `追加（${jemiHitokotoCount}個目安）` : '追加しない'}`);
   lines.push('');
@@ -992,7 +1061,6 @@ async function copyPrompt(){
     btn.textContent = old;
     mobileBtn.textContent = oldMobile;
   }, 800);
-  saveConversationState();
 }
 
 function downloadPrompt(){
@@ -1026,11 +1094,11 @@ function setupUiBindings(){
   });
   state.watchIds.forEach(id => {
     const el = document.getElementById(id);
-    el.addEventListener('input', () => { updateState(); saveConversationState(); });
-    el.addEventListener('change', () => { updateState(); saveConversationState(); });
+    el.addEventListener('input', () => { updateState(); scheduleSaveConversationState(); });
+    el.addEventListener('change', () => { updateState(); scheduleSaveConversationState(); });
   });
   document.getElementById('templateView').textContent =
-    basePrompt + '\n\n---\n\nDSL CONFIG LAYER\n' + JSON.stringify(dsl, null, 2);
+    basePrompt + '\n\n---\n\nDSL CONFIG LAYER\n' + JSON.stringify({ dsl, scaleLabels }, null, 2);
 }
 
 function setupRuntimeEvents(){
@@ -1072,7 +1140,9 @@ if(!state.restoredFromState){
 }
 setMobileCopyEnabled(!!document.getElementById('output').value.trim());
 updateState();
-saveConversationState();
+if(!state.restoredFromState){
+  saveConversationState();
+}
 </script>
 </body>
 </html>
