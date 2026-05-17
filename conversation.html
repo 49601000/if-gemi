@@ -230,6 +230,10 @@
           <option>物語プロット</option>
         </select>
 
+        <label>文字数目安</label>
+        <input id="targetLength" type="number" value="1500" min="300" max="5000" step="100" placeholder="例：800 / 1200 / 1500 / 2000 / 3000" />
+        <div class="scaleHint">厳密な上限ではなく、生成時の目安です</div>
+
         <label>思想・価値観（任意）</label>
         <textarea id="thoughts" placeholder="例：
 ・投資するかしないか自体が価値観
@@ -245,6 +249,11 @@
           <option value="final">締めの一言だけに反映</option>
           <option value="none">反映しない</option>
         </select>
+
+        <label><input id="includeJemiHitokoto" type="checkbox" checked /> 【ジェミ師匠のひとこと】を追加</label>
+        <label>ひとこと個数</label>
+        <input id="jemiHitokotoCount" type="number" value="3" min="1" max="5" step="1" />
+        <div class="scaleHint">チェックOFF時は個数指定を無視します</div>
 
         <details open>
           <summary>出力パラメータ</summary>
@@ -309,6 +318,7 @@
           <div class="pill"><b>師匠</b><span id="mentorState">穏やかな分析師匠</span></div>
           <div class="pill"><b>弟子</b><span id="studentState">素直な初心者</span></div>
           <div class="pill"><b>思想</b><span id="thoughtsState">未設定</span></div>
+          <div class="pill"><b>ひとこと</b><span id="hitokotoState">ON / 3個</span></div>
           <div class="pill"><b>コピー状態</b><span id="copyState" class="warnTxt">未コピー</span></div>
         </div>
 
@@ -468,7 +478,7 @@ const storageKey = 'metaphorDialogueOutputParams';
 const state = {
   defaultPresetKey: 'teaching',
   rangeIds: ['structureDepth','dialogueDrama','studentDelay','teacherDensity','metaphorRetention','punchlineStrength'],
-  watchIds: ['subjectName','mentorPreset','mentorCustom','studentPreset','studentCustom','purpose','source','presetSelect','thoughts','philosophyTiming'],
+  watchIds: ['subjectName','mentorPreset','mentorCustom','studentPreset','studentCustom','purpose','targetLength','source','presetSelect','thoughts','philosophyTiming','includeJemiHitokoto','jemiHitokotoCount'],
   hasStoredParams: false
 };
 
@@ -582,6 +592,25 @@ function getPhilosophyTimingLabel(value){
   return labels[value] || labels.twist;
 }
 
+function sanitizeTargetLength(rawValue){
+  const parsed = Number.parseInt(rawValue, 10);
+  if(!Number.isFinite(parsed)) return 1500;
+  return Math.min(5000, Math.max(300, parsed));
+}
+
+function sanitizeJemiHitokotoCount(rawValue){
+  const parsed = Number.parseInt(rawValue, 10);
+  if(!Number.isFinite(parsed)) return 3;
+  return Math.min(5, Math.max(1, parsed));
+}
+
+function syncJemiHitokotoControls(){
+  const include = document.getElementById('includeJemiHitokoto').checked;
+  const countEl = document.getElementById('jemiHitokotoCount');
+  countEl.disabled = !include;
+  countEl.value = String(sanitizeJemiHitokotoCount(countEl.value));
+}
+
 function syncCustomFields(){
   const mentorCustom = document.getElementById('mentorCustom');
   const studentCustom = document.getElementById('studentCustom');
@@ -595,6 +624,9 @@ function buildPrompt(){
   const mentor = getMentor();
   const student = getStudent();
   const purpose = v('purpose');
+  const targetLength = sanitizeTargetLength(v('targetLength'));
+  const includeJemiHitokoto = document.getElementById('includeJemiHitokoto').checked;
+  const jemiHitokotoCount = sanitizeJemiHitokotoCount(v('jemiHitokotoCount'));
   const thoughts = v('thoughts').trim();
   const philosophyTiming = v('philosophyTiming') || 'twist';
   const philosophyTimingLabel = getPhilosophyTimingLabel(philosophyTiming);
@@ -605,6 +637,8 @@ function buildPrompt(){
   const teacherDensity = Number(v('teacherDensity'));
   const metaphorRetention = Number(v('metaphorRetention'));
   const punchlineStrength = Number(v('punchlineStrength'));
+  document.getElementById('targetLength').value = String(targetLength);
+  document.getElementById('jemiHitokotoCount').value = String(jemiHitokotoCount);
 
   const lines = [];
   lines.push('---');
@@ -633,6 +667,23 @@ function buildPrompt(){
   lines.push(`- 師匠の説明圧：${teacherDensity}/10`);
   lines.push(`- 比喩保持度：${metaphorRetention}/10`);
   lines.push(`- パンチライン強度：${punchlineStrength}/10`);
+  lines.push(`- 文字数目安：約${targetLength}文字`);
+  lines.push(`- ジェミ師匠のひとこと：${includeJemiHitokoto ? `追加（${jemiHitokotoCount}個目安）` : '追加しない'}`);
+  lines.push('');
+  lines.push(`最終出力は日本語で約${targetLength}文字を目安にしてください。厳密な文字数一致は不要ですが、冗長な往復を避け、指定文字数に近づけてください。`);
+  lines.push('文字数制御の優先順位は、1) 比喩の分かりやすさ 2) 会話の自然さ 3) 文字数目安。文字数を守るために意味を崩さないこと。');
+  lines.push('【ジェミ師匠のひとこと】を出す場合も、全体文字数の中に含めて調整すること。');
+  lines.push('');
+  lines.push('【ジェミ師匠のひとこと設定】');
+  if(includeJemiHitokoto){
+    lines.push('【師匠と弟子の会話】の後、【構造メモ】の前に、【ジェミ師匠のひとこと】を入れてください。');
+    lines.push(`個数は${jemiHitokotoCount}個を目安にしてください。`);
+    lines.push('各項目は短く、会話劇の要点・教訓・読者が持ち帰るべき視点を、ジェミ師匠らしい軽い口調でまとめてください。');
+    lines.push('本文の焼き直しではなく、余韻と理解補助として機能させてください。');
+    lines.push('【ジェミ師匠のひとこと】は構造メモより読者向けのやわらかいまとめにし、Source Domain / Target Domain / 不条理の核 / パンチラインとは役割を分けること。');
+  } else {
+    lines.push('【ジェミ師匠のひとこと】は出力しない。');
+  }
   lines.push('');
   lines.push('【思想・価値観】');
   if(shouldUsePhilosophy){
@@ -696,14 +747,25 @@ function buildPrompt(){
   lines.push('- 比喩は主役にせず、説明補助として必要な場面だけ使う');
   lines.push('');
   lines.push('【出力形式】');
+  lines.push('1. 【師匠と弟子の会話】');
+  if(includeJemiHitokoto){
+    lines.push('2. 【ジェミ師匠のひとこと】');
+    lines.push('3. 【構造メモ】');
+  } else {
+    lines.push('2. 【構造メモ】');
+  }
+  lines.push('');
   lines.push('## 【師匠と弟子の会話】');
   lines.push('');
   lines.push('師匠「……」');
   lines.push('弟子「……」');
   lines.push('');
   lines.push('この形式で会話本文を書く。');
-  lines.push('');
-  lines.push('必要なら会話後に短く以下を付ける。');
+  if(includeJemiHitokoto){
+    lines.push('');
+    lines.push('## 【ジェミ師匠のひとこと】');
+    lines.push('- 1) ……');
+  }
   lines.push('');
   lines.push('## 【構造メモ】');
   lines.push('- Source Domain：');
@@ -760,12 +822,16 @@ function buildPrompt(){
 
 function updateState(){
   syncCustomFields();
+  syncJemiHitokotoControls();
   document.getElementById('purposeState').textContent = v('purpose');
   document.getElementById('mentorState').textContent = getMentor();
   document.getElementById('studentState').textContent = getStudent();
   const hasThoughts = v('thoughts').trim();
   const timing = getPhilosophyTimingLabel(v('philosophyTiming') || 'twist');
   document.getElementById('thoughtsState').textContent = hasThoughts ? `あり / ${timing}` : '未設定';
+  const include = document.getElementById('includeJemiHitokoto').checked;
+  const count = sanitizeJemiHitokotoCount(v('jemiHitokotoCount'));
+  document.getElementById('hitokotoState').textContent = include ? `ON / ${count}個` : 'OFF';
 }
 
 function isMobileView(){
