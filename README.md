@@ -1,7 +1,7 @@
-# 比喩プロンプトビルダー4点セット 役割まとめ
+# 「もしジェミ」プロンプトビルダー4点セット 役割まとめ
 
 ## スレタイ
-**【整理】`metaphor.html` → `scenario.html` → `conversation.html` → `proofreading.html` の順で使うと、比喩を「会話台本」から「部分修正」まで回せる件**
+**【整理】`metaphor.html` → `scenario.html` → `conversation.html` → `proofreading.html` の順で使うと、もしジェミ用の比喩を「会話台本」から「部分修正」まで回せる件**
 
 ## 本文（なんjレス風）
 
@@ -34,7 +34,7 @@
 6. **実運用フロー（推奨）**  
    1. `metaphor.html` で比喩を作る  
    2. その結果を `scenario.html` に入れてシナリオ骨子を作る  
-   3. さらに `conversation.html` で師匠弟子の会話台本に仕上げる  
+   3. さらに `conversation.html` で師匠－僕の会話台本に仕上げる  
    4. 最後に `proofreading.html` で惜しい表現だけピンポイント修正する
 
 7. **iPhoneホーム画面運用メモ（保存と復帰）**  
@@ -47,9 +47,9 @@
    `moshiJemi_` で始まるキーだけ削除するので、他ツールの保存には触らない。  
    つまりこういうことや: **必要なときだけ安全に全リセットできる**。
 
-## なんj民の補足・ツッコミ
+## 補足
 
-- 「ファイル名修正後は `scenario.html` / `conversation.html` で統一。読みやすさも保守性も上がるで」  
-- 「役割が被ってるようで被ってない。前段の出力を次段で再利用する“パイプライン構成”や」
-- 「`proofreading.html` は“作り直し”やなくて“仕上げ磨き”用。ここ分けたのが実運用で効くで」
-- 「ホーム画面アプリ運用なら、`moshiJemi_` prefix 保存 + `index.html` から一括クリアが実務的や」
+- 「ファイル名修正後は `scenario.html` / `conversation.html` で統一。読みやすさも保守性も上がる」  
+- 「役割が被ってるようで被ってない。前段の出力を次段で再利用する“パイプライン構成”」
+- 「`proofreading.html` は“作り直し”やなくて“仕上げ磨き”用。ここ分けたのが実運用で効く」
+- 「ホーム画面アプリ運用なら、`moshiJemi_` prefix 保存 + `index.html` から一括クリアが実務的」
