@@ -194,6 +194,7 @@
       'mode','targetText','editIntent','editStrength','outputFormat','returnScope','sourceText',
       'keepFlow','keepTone','keepMetaphor','keepMemo','banRewrite'
     ];
+    const STORAGE_KEY = 'moshiJemi_proofreading_state';
 
     const modeAdditions = {
       '単一表現修正': [
@@ -232,6 +233,56 @@
       return !!(el && el.checked);
     }
 
+    function savePageState(){
+      const payload = {
+        mode: v('mode'),
+        targetText: v('targetText'),
+        editIntent: v('editIntent'),
+        editStrength: v('editStrength'),
+        outputFormat: v('outputFormat'),
+        returnScope: v('returnScope'),
+        sourceText: v('sourceText'),
+        keepFlow: checked('keepFlow'),
+        keepTone: checked('keepTone'),
+        keepMetaphor: checked('keepMetaphor'),
+        keepMemo: checked('keepMemo'),
+        banRewrite: checked('banRewrite'),
+        output: v('output'),
+        dirtyStateText: document.getElementById('dirtyState').textContent,
+        dirtyStateClass: document.getElementById('dirtyState').className,
+        copyStateText: document.getElementById('copyState').textContent,
+        copyStateClass: document.getElementById('copyState').className
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    }
+
+    function restorePageState(){
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(!raw) return;
+      try{
+        const data = JSON.parse(raw);
+        if(typeof data.mode === 'string') document.getElementById('mode').value = data.mode;
+        if(typeof data.targetText === 'string') document.getElementById('targetText').value = data.targetText;
+        if(typeof data.editIntent === 'string') document.getElementById('editIntent').value = data.editIntent;
+        if(typeof data.editStrength === 'string' || typeof data.editStrength === 'number') document.getElementById('editStrength').value = String(data.editStrength);
+        if(typeof data.outputFormat === 'string') document.getElementById('outputFormat').value = data.outputFormat;
+        if(typeof data.returnScope === 'string') document.getElementById('returnScope').value = data.returnScope;
+        if(typeof data.sourceText === 'string') document.getElementById('sourceText').value = data.sourceText;
+        if(typeof data.keepFlow === 'boolean') document.getElementById('keepFlow').checked = data.keepFlow;
+        if(typeof data.keepTone === 'boolean') document.getElementById('keepTone').checked = data.keepTone;
+        if(typeof data.keepMetaphor === 'boolean') document.getElementById('keepMetaphor').checked = data.keepMetaphor;
+        if(typeof data.keepMemo === 'boolean') document.getElementById('keepMemo').checked = data.keepMemo;
+        if(typeof data.banRewrite === 'boolean') document.getElementById('banRewrite').checked = data.banRewrite;
+        if(typeof data.output === 'string') document.getElementById('output').value = data.output;
+        if(typeof data.dirtyStateText === 'string') document.getElementById('dirtyState').textContent = data.dirtyStateText;
+        if(typeof data.dirtyStateClass === 'string') document.getElementById('dirtyState').className = data.dirtyStateClass;
+        if(typeof data.copyStateText === 'string') document.getElementById('copyState').textContent = data.copyStateText;
+        if(typeof data.copyStateClass === 'string') document.getElementById('copyState').className = data.copyStateClass;
+      } catch (e){
+        console.warn('proofreading state restore failed', e);
+      }
+    }
+
     function sanitizeStrength(raw){
       const n = Number.parseInt(raw, 10);
       if(!Number.isFinite(n)) return 4;
@@ -254,6 +305,7 @@
       document.getElementById('copyState').textContent = '未コピー';
       document.getElementById('copyState').className = 'warnTxt';
       updateState();
+      savePageState();
     }
 
     function updateState(){
@@ -354,6 +406,7 @@
       document.getElementById('copyState').className = 'warnTxt';
       document.getElementById('copyBtn').disabled = false;
       document.getElementById('mobileCopyBtn').disabled = false;
+      savePageState();
 
       const btn = document.getElementById('buildBtn');
       const mbtn = document.getElementById('mobileBuildBtn');
@@ -367,6 +420,7 @@
         btn.textContent = old;
         mbtn.textContent = oldM;
       }, 800);
+      savePageState();
     }
 
     async function copyPrompt(){
@@ -397,6 +451,7 @@
       markDirty();
       const btn = document.getElementById('clearBtn');
       clickFx(btn);
+      savePageState();
     }
 
     function downloadPrompt(){
@@ -408,6 +463,7 @@
       a.click();
       URL.revokeObjectURL(a.href);
       clickFx(document.getElementById('downloadBtn'));
+      savePageState();
     }
 
     function bindInputs(){
@@ -419,10 +475,12 @@
     }
 
     bindInputs();
+    restorePageState();
     updateState();
-    document.getElementById('output').value = '';
-    document.getElementById('copyBtn').disabled = true;
-    document.getElementById('mobileCopyBtn').disabled = true;
+    const hasOutput = !!v('output').trim();
+    document.getElementById('copyBtn').disabled = !hasOutput;
+    document.getElementById('mobileCopyBtn').disabled = !hasOutput;
+    savePageState();
   </script>
 </body>
 </html>

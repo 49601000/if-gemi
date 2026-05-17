@@ -51,6 +51,13 @@
     .hero {
       padding: 20px;
     }
+    .heroActions{
+      margin-top:12px;
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      align-items:center;
+    }
 
     h1 {
       margin: 0 0 8px;
@@ -112,6 +119,17 @@
       filter: brightness(1.08);
       transform: translateY(-1px);
     }
+    .btn.secondary{
+      width:auto;
+      padding:10px 14px;
+      min-height:42px;
+      border:1px solid rgba(148,163,184,.28);
+      background:rgba(15,23,42,.75);
+      color:#e2e8f0;
+      margin-top:0;
+      cursor:pointer;
+      font:inherit;
+    }
 
     .footer {
       text-align: center;
@@ -126,6 +144,10 @@
     <section class="hero">
       <h1>PromptBuilder Launcher</h1>
       <p>GitHub Pages用のランチャーです。以下の4ページから、比喩生成 → シナリオ構造化 → 師匠弟子会話化 → 部分修正の順で使えます。</p>
+      <div class="heroActions">
+        <button class="btn secondary" type="button" onclick="clearMoshiJemiStorage()">保存データをクリア</button>
+      </div>
+      <p class="footer" id="lastOpenedState"></p>
     </section>
 
     <section class="grid">
@@ -160,5 +182,34 @@
 
     <p class="footer">Files: metaphor.html / scenario.html / conversation.html / proofreading.html</p>
   </main>
+  <script>
+    const STORAGE_PREFIX = 'moshiJemi_';
+    const LAST_OPENED_KEY = `${STORAGE_PREFIX}launcher_lastOpened`;
+
+    function clearMoshiJemiStorage() {
+      if (!confirm('もしジェミ関連の保存データをすべて削除しますか？')) return;
+      Object.keys(localStorage).forEach((key) => {
+        if (key.startsWith(STORAGE_PREFIX)) {
+          localStorage.removeItem(key);
+        }
+      });
+      alert('保存データを削除しました。');
+      renderLastOpened();
+    }
+
+    function renderLastOpened(){
+      const last = localStorage.getItem(LAST_OPENED_KEY);
+      const el = document.getElementById('lastOpenedState');
+      el.textContent = last ? `前回開いたページ: ${last}` : '';
+    }
+
+    document.querySelectorAll('a.btn[href$=".html"]').forEach((link) => {
+      link.addEventListener('click', () => {
+        localStorage.setItem(LAST_OPENED_KEY, link.getAttribute('href') || '');
+      });
+    });
+
+    renderLastOpened();
+  </script>
 </body>
 </html>

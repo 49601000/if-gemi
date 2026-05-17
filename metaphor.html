@@ -759,6 +759,7 @@
     const customSourceDomainInput = document.getElementById("customSourceDomain");
     const builderActionStatus = document.getElementById("builderActionStatus");
     const buttonResetTimers = new WeakMap();
+    const STORAGE_KEY = "moshiJemi_metaphor_state";
 
     const sampleBuilderText = "・・・が・・・で、・・・・してしまう";
 
@@ -831,6 +832,43 @@ target:
         } catch (fallbackError) {
           return false;
         }
+      }
+    }
+
+    function savePageState() {
+      const payload = {
+        builderInputText: builderInputText.value,
+        metaphorGoal: metaphorGoalSelect.value,
+        sourceDomain: sourceDomainSelect.value,
+        customSourceDomain: customSourceDomainInput.value,
+        builderPromptOutput: builderPromptOutput.value,
+        activeTab: document.querySelector(".tab-button.active")?.dataset.tab || "theory"
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    }
+
+    function restorePageState() {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      try {
+        const data = JSON.parse(raw);
+        if (typeof data.builderInputText === "string") builderInputText.value = data.builderInputText;
+        if (typeof data.metaphorGoal === "string") metaphorGoalSelect.value = data.metaphorGoal;
+        if (typeof data.sourceDomain === "string") sourceDomainSelect.value = data.sourceDomain;
+        if (typeof data.customSourceDomain === "string") customSourceDomainInput.value = data.customSourceDomain;
+        if (typeof data.builderPromptOutput === "string") builderPromptOutput.value = data.builderPromptOutput;
+        if (typeof data.activeTab === "string") {
+          document.querySelectorAll(".tab-button").forEach((btn) => btn.classList.remove("active"));
+          document.querySelectorAll(".tab-panel").forEach((panel) => panel.classList.remove("active"));
+          const tabButton = document.querySelector(`.tab-button[data-tab="${data.activeTab}"]`);
+          const tabPanel = document.getElementById(data.activeTab);
+          if (tabButton && tabPanel) {
+            tabButton.classList.add("active");
+            tabPanel.classList.add("active");
+          }
+        }
+      } catch (error) {
+        console.warn("metaphor state restore failed", error);
       }
     }
 
@@ -922,6 +960,7 @@ target:
               metaphorGoalSelect.value,
               resolveSourceDomain()
             );
+            savePageState();
             await sleep(250);
           }
         });
@@ -941,6 +980,7 @@ target:
             sourceDomainSelect.value = "ガチャ";
             customSourceDomainInput.value = "";
             syncCustomSourceDomainField();
+            savePageState();
             await sleep(250);
           }
         });
@@ -964,6 +1004,11 @@ target:
       });
 
       sourceDomainSelect.addEventListener("change", syncCustomSourceDomainField);
+      sourceDomainSelect.addEventListener("change", savePageState);
+      builderInputText.addEventListener("input", savePageState);
+      metaphorGoalSelect.addEventListener("change", savePageState);
+      customSourceDomainInput.addEventListener("input", savePageState);
+      builderPromptOutput.addEventListener("input", savePageState);
       syncCustomSourceDomainField();
     }
 
@@ -1047,6 +1092,7 @@ target:
           button.classList.add("active");
           document.querySelectorAll(".tab-panel").forEach(panel => panel.classList.remove("active"));
           document.getElementById(button.dataset.tab).classList.add("active");
+          savePageState();
         });
       });
     }
@@ -1057,8 +1103,10 @@ target:
     renderEvaluation();
     renderFailures();
     renderFlow();
+    restorePageState();
     initTabs();
     initBuilder();
+    savePageState();
   </script>
 </body>
 </html>

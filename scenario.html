@@ -320,12 +320,49 @@
     const statusEl = document.getElementById("status");
     const metaEl = document.getElementById("meta");
     const buttonResetTimers = new WeakMap();
+    const STORAGE_KEY = "moshiJemi_scenario_state";
 
     const sampleText = "レイドバトルの超レアボス出現部屋を、公式インフルエンサーとその身内がパスワード付きで全ロックして、一般人を弾いている状態";
 
+    function savePageState() {
+      const payload = {
+        inputText: inputEl.value,
+        optimizedText: outputEl.value,
+        logicOn: logicOnEl.checked,
+        styleOn: styleOnEl.checked,
+        metaphorMode: metaphorModeEl.value,
+        metaphorOverride: metaphorOverrideEl.value,
+        promptPreview: promptEl.value,
+        statusText: statusEl.textContent,
+        statusClass: statusEl.className,
+        metaText: metaEl.textContent
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    }
+
+    function restorePageState() {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      try {
+        const data = JSON.parse(raw);
+        if (typeof data.inputText === "string") inputEl.value = data.inputText;
+        if (typeof data.optimizedText === "string") outputEl.value = data.optimizedText;
+        if (typeof data.logicOn === "boolean") logicOnEl.checked = data.logicOn;
+        if (typeof data.styleOn === "boolean") styleOnEl.checked = data.styleOn;
+        if (typeof data.metaphorMode === "string") metaphorModeEl.value = data.metaphorMode;
+        if (typeof data.metaphorOverride === "string") metaphorOverrideEl.value = data.metaphorOverride;
+        if (typeof data.promptPreview === "string") promptEl.value = data.promptPreview;
+        if (typeof data.statusText === "string") statusEl.textContent = data.statusText;
+        if (typeof data.statusClass === "string") statusEl.className = data.statusClass;
+        if (typeof data.metaText === "string") metaEl.textContent = data.metaText;
+      } catch (error) {
+        console.warn("scenario state restore failed", error);
+      }
+    }
+
     function extractSection(text, heading) {
       const escaped = heading.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      const regex = new RegExp(`${escaped}[\s\S]*?(?=(^【[^】]+】)|\s*$)`, "m");
+      const regex = new RegExp(`${escaped}[\\s\\S]*?(?=(^【[^】]+】)|\\s*$)`, "m");
       const match = text.match(regex);
       if (!match) return "";
       return match[0].replace(new RegExp(`^${escaped}`), "").trim();
@@ -369,7 +406,7 @@
       const quoteBlock = `【引用対象】
 ${inputText}`;
 
-      const scenarioBlock = `【Scenario Structure Module】`
+      const scenarioBlock = `【Scenario Structure Module】
 - 物語化の前に、次の4項目を必須で確定する
   1. Source Domain（何を比喩として使っているか）
   2. Structural Pattern（抽象構造）
@@ -465,6 +502,7 @@ ${metaphorOverride || 'なし'}
     function setIdleStatus(text) {
       statusEl.textContent = text;
       statusEl.className = "hint status";
+      savePageState();
     }
 
     function setStatus(message, tone) {
@@ -473,6 +511,7 @@ ${metaphorOverride || 'なし'}
       if (tone) {
         statusEl.classList.add(tone);
       }
+      savePageState();
     }
 
     async function copyToClipboard(text) {
@@ -560,6 +599,7 @@ ${metaphorOverride || 'なし'}
       }
 
       promptEl.value = buildPrompt(input, scenarioEnabled, punchEnabled);
+      savePageState();
     }
 
     async function runGeneration() {
@@ -583,6 +623,7 @@ ${metaphorOverride || 'なし'}
       promptEl.value = prompt;
       await copyToClipboard(prompt);
       metaEl.textContent = "AIの返答は「AI生成結果」欄へ手動で貼り付けてください。";
+      savePageState();
     }
 
     runBtn.addEventListener("click", async () => {
@@ -612,6 +653,7 @@ ${metaphorOverride || 'なし'}
           inputEl.value = sampleText;
           syncPromptPreview();
           metaEl.textContent = "";
+          savePageState();
           await sleep(200);
         }
       });
@@ -622,6 +664,7 @@ ${metaphorOverride || 'なし'}
     styleOnEl.addEventListener("change", syncPromptPreview);
     metaphorModeEl.addEventListener("change", syncPromptPreview);
     metaphorOverrideEl.addEventListener("input", syncPromptPreview);
+    outputEl.addEventListener("input", savePageState);
     copyPromptBtn.addEventListener("click", async () => {
       await runButtonTransition(copyPromptBtn, {
         busyLabel: "コピー中...",
@@ -652,8 +695,10 @@ ${metaphorOverride || 'なし'}
       });
     });
 
+    restorePageState();
     syncPromptPreview();
-    setIdleStatus("入力待ちです。");
+    if (!statusEl.textContent) setIdleStatus("入力待ちです。");
+    savePageState();
   </script>
 </body>
 </html>

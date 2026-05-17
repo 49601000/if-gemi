@@ -501,12 +501,14 @@ const dsl = {
   }
 };
 
-const storageKey = 'metaphorDialogueOutputParams';
+const storageKey = 'moshiJemi_conversation_ranges';
+const conversationStateKey = 'moshiJemi_conversation_state';
 const state = {
   defaultPresetKey: 'teaching',
   rangeIds: ['structureDepth','dialogueDrama','studentDelay','teacherDensity','metaphorRetention','punchlineStrength'],
   watchIds: ['subjectName','mentorPreset','mentorCustom','studentPreset','studentCustom','purpose','targetLength','source','presetSelect','thoughts','philosophyTiming','includeJemiHitokoto','jemiHitokotoCount'],
-  hasStoredParams: false
+  hasStoredParams: false,
+  restoredFromState: false
 };
 
 function v(id){
@@ -559,7 +561,7 @@ function bindRange(id){
     out.textContent = el.value;
     updateState();
   };
-  el.addEventListener('input', () => { sync(); markParamsDirty(); });
+  el.addEventListener('input', () => { sync(); markParamsDirty(); saveConversationState(); });
   sync();
 }
 
@@ -599,6 +601,75 @@ function saveSettings(){
     btn.textContent = old;
   }, 800);
   setSaveParamsState('保存済み（この値を次回起動時に使用）', 'scaleHint ok');
+  saveConversationState();
+}
+
+function collectConversationState(){
+  const data = {};
+  const valueIds = [
+    ...state.rangeIds,
+    'subjectName','mentorPreset','mentorCustom','studentPreset','studentCustom',
+    'purpose','targetLength','thoughts','philosophyTiming','jemiHitokotoCount',
+    'source','output','presetSelect'
+  ];
+  valueIds.forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) data[id] = el.value;
+  });
+  const includeEl = document.getElementById('includeJemiHitokoto');
+  data.includeJemiHitokoto = !!(includeEl && includeEl.checked);
+  data.copyStateText = document.getElementById('copyState').textContent;
+  data.copyStateClass = document.getElementById('copyState').className;
+  data.saveParamsStateText = document.getElementById('saveParamsState').textContent;
+  data.saveParamsStateClass = document.getElementById('saveParamsState').className;
+  return data;
+}
+
+function applyConversationState(data){
+  const valueIds = [
+    ...state.rangeIds,
+    'subjectName','mentorPreset','mentorCustom','studentPreset','studentCustom',
+    'purpose','targetLength','thoughts','philosophyTiming','jemiHitokotoCount',
+    'source','output'
+  ];
+  valueIds.forEach((id) => {
+    if (typeof data[id] !== 'string') return;
+    const el = document.getElementById(id);
+    if (el) el.value = data[id];
+  });
+  if (typeof data.includeJemiHitokoto === 'boolean') {
+    const el = document.getElementById('includeJemiHitokoto');
+    if (el) el.checked = data.includeJemiHitokoto;
+  }
+  state.rangeIds.forEach((id) => {
+    const input = document.getElementById(id);
+    const out = document.getElementById(id + 'Val');
+    out.textContent = input.value;
+  });
+  if (typeof data.copyStateText === 'string') document.getElementById('copyState').textContent = data.copyStateText;
+  if (typeof data.copyStateClass === 'string') document.getElementById('copyState').className = data.copyStateClass;
+  if (typeof data.saveParamsStateText === 'string') document.getElementById('saveParamsState').textContent = data.saveParamsStateText;
+  if (typeof data.saveParamsStateClass === 'string') document.getElementById('saveParamsState').className = data.saveParamsStateClass;
+  syncCustomFields();
+  syncJemiHitokotoControls();
+  updateState();
+}
+
+function saveConversationState(){
+  localStorage.setItem(conversationStateKey, JSON.stringify(collectConversationState()));
+}
+
+function restoreConversationState(){
+  const raw = localStorage.getItem(conversationStateKey);
+  if (!raw) return false;
+  try {
+    const data = JSON.parse(raw);
+    applyConversationState(data);
+    return true;
+  } catch (e) {
+    console.warn('conversation state restore failed', e);
+    return false;
+  }
 }
 
 function getMentor(){
@@ -854,6 +925,7 @@ function buildPrompt(){
     mobileBtn.textContent = oldMobile;
   }, 800);
   setMobileCopyEnabled(true);
+  saveConversationState();
 }
 
 function updateState(){
@@ -920,6 +992,7 @@ async function copyPrompt(){
     btn.textContent = old;
     mobileBtn.textContent = oldMobile;
   }, 800);
+  saveConversationState();
 }
 
 function downloadPrompt(){
@@ -940,6 +1013,7 @@ function clearSource(){
   const btn = document.getElementById('clearBtn');
   btn.classList.add('clicked');
   setTimeout(() => btn.classList.remove('clicked'), 800);
+  saveConversationState();
 }
 
 function setupUiBindings(){
@@ -952,8 +1026,8 @@ function setupUiBindings(){
   });
   state.watchIds.forEach(id => {
     const el = document.getElementById(id);
-    el.addEventListener('input', updateState);
-    el.addEventListener('change', updateState);
+    el.addEventListener('input', () => { updateState(); saveConversationState(); });
+    el.addEventListener('change', () => { updateState(); saveConversationState(); });
   });
   document.getElementById('templateView').textContent =
     basePrompt + '\n\n---\n\nDSL CONFIG LAYER\n' + JSON.stringify(dsl, null, 2);
@@ -984,17 +1058,21 @@ setupUiBindings();
 setupRuntimeEvents();
 setFullscreenButtonLabel(false);
 initPresets();
-if(state.hasStoredParams){
-  setSaveParamsState('保存済み設定を読込済み', 'scaleHint ok');
-  buildPrompt();
-} else {
-  applyPreset();
+state.restoredFromState = restoreConversationState();
+if(!state.restoredFromState){
+  if(state.hasStoredParams){
+    setSaveParamsState('保存済み設定を読込済み', 'scaleHint ok');
+    buildPrompt();
+  } else {
+    applyPreset();
+  }
+  document.getElementById('copyState').textContent = '未コピー';
+  document.getElementById('copyState').className = 'warnTxt';
+  setMobileCopyEnabled(false);
 }
-document.getElementById('output').value = '';
-document.getElementById('copyState').textContent = '未コピー';
-document.getElementById('copyState').className = 'warnTxt';
-setMobileCopyEnabled(false);
+setMobileCopyEnabled(!!document.getElementById('output').value.trim());
 updateState();
+saveConversationState();
 </script>
 </body>
 </html>
