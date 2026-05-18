@@ -44,7 +44,8 @@
     }
     textarea{resize:vertical;min-height:110px}
     textarea.sourceText{min-height:300px}
-    textarea.outText{min-height:520px;font-family:ui-monospace,Consolas,monospace;line-height:1.55}
+    textarea.outText{min-height:420px;font-family:ui-monospace,Consolas,monospace;line-height:1.55}
+    textarea.mdOutText{min-height:180px;font-family:ui-monospace,Consolas,monospace;line-height:1.55}
     input:focus,select:focus,textarea:focus{border-color:#6d5ef8;box-shadow:0 0 0 3px rgba(109,94,248,.18)}
     .row{display:grid;grid-template-columns:1fr 74px;gap:12px;align-items:center}
     .val{font-variant-numeric:tabular-nums;background:#0f1831;border:1px solid #2a3860;border-radius:10px;padding:8px;text-align:center;color:#d8e0f7}
@@ -64,6 +65,11 @@
     button.clicked{transform:translateY(1px) scale(0.98);opacity:.9}
     .preview{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
     .pill{border:1px solid #2a3860;background:#0f1730;padding:6px 10px;border-radius:999px;font-size:12px;color:#d8e3ff}
+    .fieldHead{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:12px}
+    .fieldHead label{margin:0}
+    .miniBtn{
+      min-height:36px;min-width:132px;padding:8px 10px;border-radius:10px;font-size:12px;letter-spacing:0
+    }
     .ok{color:var(--good)}
     .warnTxt{color:var(--warn)}
     .toast{
@@ -139,7 +145,7 @@
 
         <div class="btns">
           <button id="buildBtn" type="button" onclick="buildPrompt()">プロンプト生成</button>
-          <button id="copyBtn" type="button" onclick="copyPrompt()" disabled>コピー</button>
+          <button id="copyBtn" type="button" onclick="copyPrompt()" disabled>まとめてコピー</button>
           <button class="warn" id="clearBtn" type="button" onclick="clearSource()">本文クリア</button>
         </div>
         <div class="scaleHint" id="dirtyState">入力を編集中（未生成）</div>
@@ -159,7 +165,19 @@
         <label>レビュー対象本文（会話劇）</label>
         <textarea id="sourceText" class="sourceText" placeholder="conversation.html で生成した会話劇を貼り付け&#10;【師匠と弟子の会話】/【ジェミ師匠のひとこと】/【構造メモ】を含んでもOK"></textarea>
 
-        <label>生成プロンプト</label>
+        <div class="fieldHead">
+          <label>修正対象.md</label>
+          <button class="secondary miniBtn" id="copyTargetBtn" type="button" onclick="copyTargetMd()" disabled>修正対象をコピー</button>
+        </div>
+        <textarea id="targetMdOutput" class="mdOutText" readonly></textarea>
+
+        <div class="fieldHead">
+          <label>修正意図.md</label>
+          <button class="secondary miniBtn" id="copyIntentBtn" type="button" onclick="copyIntentMd()" disabled>修正意図をコピー</button>
+        </div>
+        <textarea id="intentMdOutput" class="mdOutText" readonly></textarea>
+
+        <label>生成プロンプト（まとめ）</label>
         <textarea id="output" class="outText" readonly></textarea>
       </div>
     </section>
@@ -167,7 +185,7 @@
 
   <div class="mobileActions">
     <button id="mobileBuildBtn" onclick="buildPrompt()">生成</button>
-    <button id="mobileCopyBtn" onclick="copyPrompt()" disabled>コピー</button>
+    <button id="mobileCopyBtn" onclick="copyPrompt()" disabled>まとめ</button>
     <button class="secondary wide" onclick="clearSource()">本文クリア</button>
   </div>
 
@@ -228,6 +246,8 @@
         reviewStrictness: v('reviewStrictness'),
         outputCount: v('outputCount'),
         includeStructureMemo: checked('includeStructureMemo'),
+        targetMdOutput: v('targetMdOutput'),
+        intentMdOutput: v('intentMdOutput'),
         output: v('output'),
         dirtyStateText: document.getElementById('dirtyState').textContent,
         dirtyStateClass: document.getElementById('dirtyState').className,
@@ -247,6 +267,8 @@
         if(typeof data.reviewStrictness === 'string' || typeof data.reviewStrictness === 'number') document.getElementById('reviewStrictness').value = String(data.reviewStrictness);
         if(typeof data.outputCount === 'string' || typeof data.outputCount === 'number') document.getElementById('outputCount').value = String(data.outputCount);
         if(typeof data.includeStructureMemo === 'boolean') document.getElementById('includeStructureMemo').checked = data.includeStructureMemo;
+        if(typeof data.targetMdOutput === 'string') document.getElementById('targetMdOutput').value = data.targetMdOutput;
+        if(typeof data.intentMdOutput === 'string') document.getElementById('intentMdOutput').value = data.intentMdOutput;
         if(typeof data.output === 'string') document.getElementById('output').value = data.output;
         if(typeof data.dirtyStateText === 'string') document.getElementById('dirtyState').textContent = data.dirtyStateText;
         if(typeof data.dirtyStateClass === 'string') document.getElementById('dirtyState').className = data.dirtyStateClass;
@@ -262,6 +284,7 @@
       document.getElementById('dirtyState').className = 'scaleHint warnTxt';
       document.getElementById('copyState').textContent = '未コピー';
       document.getElementById('copyState').className = 'warnTxt';
+      setCopyButtonsEnabled(false);
       updateState();
       savePageState();
     }
@@ -271,12 +294,37 @@
       setTimeout(() => btn.classList.remove('clicked'), 800);
     }
 
+    function buildTargetMdLines(count){
+      const lines = ['# 修正対象', ''];
+      for(let i=1; i<=count; i++){
+        lines.push(`- ${i}.「該当表現や該当箇所」`);
+      }
+      return lines;
+    }
+
+    function buildIntentMdLines(count){
+      const lines = ['# 修正意図', ''];
+      for(let i=1; i<=count; i++){
+        lines.push(`- ${i}. 上記${i}つ目について、どう直したいか`);
+      }
+      return lines;
+    }
+
+    function setCopyButtonsEnabled(enabled){
+      document.getElementById('copyBtn').disabled = !enabled;
+      document.getElementById('mobileCopyBtn').disabled = !enabled;
+      document.getElementById('copyTargetBtn').disabled = !enabled;
+      document.getElementById('copyIntentBtn').disabled = !enabled;
+    }
+
     function buildPrompt(){
       const focus = v('reviewFocus');
       const strictness = sanitizeStrictness(v('reviewStrictness'));
       const count = sanitizeCount(v('outputCount'));
       const includeStructureMemo = checked('includeStructureMemo');
       const sourceInput = v('sourceText').trim();
+      const targetMdLines = buildTargetMdLines(count);
+      const intentMdLines = buildIntentMdLines(count);
 
       let reviewText = sourceInput || 'ここにレビュー対象本文を貼ってください';
       if(!includeStructureMemo && sourceInput){
@@ -309,13 +357,11 @@
       lines.push('- 方針は「あくまで内角を外れた表現を内角ギリギリに戻す」レビューに限定すること');
       lines.push('');
       lines.push('【出力フォーマット（厳守）】');
-      lines.push('【修正対象】');
-      lines.push('- 1.「該当表現や該当箇所」');
-      lines.push('- 2.「該当表現や該当箇所」');
+      lines.push('【修正対象.md】');
+      targetMdLines.forEach((line) => lines.push(line));
       lines.push('');
-      lines.push('【修正意図】');
-      lines.push('- 1. 上記1つ目について、どう直したいか');
-      lines.push('- 2. 上記2つ目について、どう直したいか');
+      lines.push('【修正意図.md】');
+      intentMdLines.forEach((line) => lines.push(line));
       lines.push('');
       lines.push('【レビュー対象本文】');
       lines.push(reviewText || 'ここにレビュー対象本文を貼ってください');
@@ -323,13 +369,14 @@
 
       document.getElementById('reviewStrictness').value = String(strictness);
       updateState();
+      document.getElementById('targetMdOutput').value = targetMdLines.join('\n');
+      document.getElementById('intentMdOutput').value = intentMdLines.join('\n');
       document.getElementById('output').value = lines.join('\n');
       document.getElementById('dirtyState').textContent = '生成済み（この内容をコピーして使えます）';
       document.getElementById('dirtyState').className = 'scaleHint ok';
       document.getElementById('copyState').textContent = '未コピー';
       document.getElementById('copyState').className = 'warnTxt';
-      document.getElementById('copyBtn').disabled = false;
-      document.getElementById('mobileCopyBtn').disabled = false;
+      setCopyButtonsEnabled(true);
 
       const btn = document.getElementById('buildBtn');
       const mbtn = document.getElementById('mobileBuildBtn');
@@ -370,6 +417,50 @@
       savePageState();
     }
 
+    async function copyTargetMd(){
+      if(!v('targetMdOutput').trim()) buildPrompt();
+      await navigator.clipboard.writeText(v('targetMdOutput'));
+      document.getElementById('copyState').textContent = '修正対象をコピー済み';
+      document.getElementById('copyState').className = 'ok';
+      const btn = document.getElementById('copyTargetBtn');
+      const old = btn.textContent;
+      btn.textContent = 'コピーOK';
+      clickFx(btn);
+      setTimeout(() => {
+        btn.textContent = old;
+      }, 800);
+      const toast = document.getElementById('toast');
+      toast.textContent = '修正対象をコピーしたで';
+      toast.style.display = 'block';
+      setTimeout(() => {
+        toast.style.display = 'none';
+        toast.textContent = 'コピーしたで';
+      }, 1400);
+      savePageState();
+    }
+
+    async function copyIntentMd(){
+      if(!v('intentMdOutput').trim()) buildPrompt();
+      await navigator.clipboard.writeText(v('intentMdOutput'));
+      document.getElementById('copyState').textContent = '修正意図をコピー済み';
+      document.getElementById('copyState').className = 'ok';
+      const btn = document.getElementById('copyIntentBtn');
+      const old = btn.textContent;
+      btn.textContent = 'コピーOK';
+      clickFx(btn);
+      setTimeout(() => {
+        btn.textContent = old;
+      }, 800);
+      const toast = document.getElementById('toast');
+      toast.textContent = '修正意図をコピーしたで';
+      toast.style.display = 'block';
+      setTimeout(() => {
+        toast.style.display = 'none';
+        toast.textContent = 'コピーしたで';
+      }, 1400);
+      savePageState();
+    }
+
     function clearSource(){
       document.getElementById('sourceText').value = '';
       markDirty();
@@ -388,9 +479,8 @@
     bindInputs();
     restorePageState();
     updateState();
-    const hasOutput = !!v('output').trim();
-    document.getElementById('copyBtn').disabled = !hasOutput;
-    document.getElementById('mobileCopyBtn').disabled = !hasOutput;
+    const hasOutput = !!v('output').trim() && !!v('targetMdOutput').trim() && !!v('intentMdOutput').trim();
+    setCopyButtonsEnabled(hasOutput);
     savePageState();
   </script>
 </body>
