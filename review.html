@@ -295,7 +295,7 @@
     }
 
     function buildTargetMdLines(count){
-      const lines = ['# 修正対象', ''];
+      const lines = [];
       for(let i=1; i<=count; i++){
         lines.push(`- ${i}.「該当表現や該当箇所」`);
       }
@@ -303,7 +303,7 @@
     }
 
     function buildIntentMdLines(count){
-      const lines = ['# 修正意図', ''];
+      const lines = [];
       for(let i=1; i<=count; i++){
         lines.push(`- ${i}. 上記${i}つ目について、どう直したいか`);
       }
@@ -355,12 +355,13 @@
       lines.push('- 良い部分は無理に修正対象にしないこと');
       lines.push('- 会話劇の個性やジェミ師匠の口調を潰す提案は禁止');
       lines.push('- 方針は「あくまで内角を外れた表現を内角ギリギリに戻す」レビューに限定すること');
+      lines.push('- 各.md出力には見出しテキスト（例: # 修正対象 / # 修正意図）を入れず、本文のみを出力すること');
       lines.push('');
       lines.push('【出力フォーマット（厳守）】');
-      lines.push('【修正対象.md】');
+      lines.push('【修正対象.md（Markdown本文のみ）】');
       targetMdLines.forEach((line) => lines.push(line));
       lines.push('');
-      lines.push('【修正意図.md】');
+      lines.push('【修正意図.md（Markdown本文のみ）】');
       intentMdLines.forEach((line) => lines.push(line));
       lines.push('');
       lines.push('【レビュー対象本文】');
